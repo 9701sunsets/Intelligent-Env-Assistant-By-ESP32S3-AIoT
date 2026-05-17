@@ -9,9 +9,9 @@
 const char *TAG = "led";
 led_strip_handle_t led_strip = NULL;//灯带句柄
 
-void configure_led(void)
+void led_init(void)
 {
-    ESP_LOGI(TAG, "Configuring LED on GPIO %d", BLINK_GPIO);
+    ESP_LOGI(TAG, "Initializing LED on GPIO %d", BLINK_GPIO);
 
     //LED灯带配置
     led_strip_config_t strip_config = {

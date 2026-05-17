@@ -7,6 +7,6 @@
 extern led_strip_handle_t led_strip;//灯带句柄
 extern const char *TAG;
 
-void configure_led(void);
+void led_init(void);
 
 #endif // __LED_H
