@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "backend_server"
+		},
+		{
+			"path": "esp32_firmware"
+		},
+		{
+			"path": "frontend"
+		}
+	]
+}
