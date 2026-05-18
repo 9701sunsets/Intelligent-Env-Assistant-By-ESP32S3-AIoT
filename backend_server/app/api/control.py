@@ -9,7 +9,7 @@ def init_routes(app):
     app.register_blueprint(bp)
     # expect mqtt client stored as app.config['MQTT_CLIENT']
 
-@bp.route('/api/device/control', methods=['POST'])
+@bp.route('/device/control', methods=['POST'])
 def send_control():
     '''
     接收控制命令并通过MQTT发布

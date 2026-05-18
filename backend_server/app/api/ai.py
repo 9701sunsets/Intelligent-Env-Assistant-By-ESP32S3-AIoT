@@ -8,7 +8,7 @@ bp = Blueprint('ai', __name__, url_prefix='/api')
 def init_routes(app):
     app.register_blueprint(bp)
 
-@bp.route('/api/ai/advice', methods=['POST'])
+@bp.route('/ai/advice', methods=['POST'])
 def ai_advice():
     '''
     接收AI建议并通过MQTT发布
@@ -46,5 +46,6 @@ def ai_advice():
             "humidity": humidity,
             "light": light
         })
+        return jsonify({"code": 200, "data": result}), 200
     except Exception:
         return jsonify({"code": 500, "error": "LLM service error"}), 500
