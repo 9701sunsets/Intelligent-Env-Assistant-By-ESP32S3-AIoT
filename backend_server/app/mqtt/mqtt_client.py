@@ -97,16 +97,16 @@ class MQTTClient:
             except Exception:
                 logger.exception("on_status handler error")
 
-    def publish_control(self, device_id, command):
-        """
-        向设备发布控制命令
-        device_id: string or None. If None, broadcast.
-        command: dict
-        """
+    def publish_control(self, data):
+        """向设备发布控制命令"""
         topic = "aiot/device/control"
-        payload = {"device_id": device_id, "command": command}
+        payload = {"msg_id": data.get("msg_id"), 
+                   "target": data.get("target"), 
+                   "action": data.get("action"),
+                   "timestamp": data.get("timestamp")
+                }
         try:
-            payload_s = json.dumps(payload)
+            payload_s = json.dumps(payload)# 将控制命令序列化为JSON字符串
         except Exception:
             logger.exception("Failed to serialize control payload")
             return False
