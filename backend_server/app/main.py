@@ -9,7 +9,8 @@ init_control_routes(app)
 
 # 导入MQTT客户端类，创建实例并存储在app配置中
 from app.mqtt.mqtt_client import MQTTClient
-mqtt_client = MQTTClient()
+from app.mqtt.handlers import on_upload, on_status
+mqtt_client = MQTTClient(on_status=on_status, on_upload=on_upload)
 app.config['MQTT_CLIENT'] = mqtt_client
 
 # 在应用启动时连接MQTT服务器
