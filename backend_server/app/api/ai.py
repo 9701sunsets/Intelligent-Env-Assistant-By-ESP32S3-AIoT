@@ -49,3 +49,39 @@ def ai_advice():
         return jsonify({"code": 200, "data": result}), 200
     except Exception:
         return jsonify({"code": 500, "error": "LLM service error"}), 500
+    
+@bp.route('/ai/chat', methods=['POST'])
+def ai_chat():
+    '''
+    接收AI聊天消息并通过MQTT发布
+    请求体JSON格式示例:
+    {
+        "device_id": "esp32_001",
+        "question": "现在适合睡觉吗？"
+    }
+    '''
+    try:
+        body = request.get_json(force=True)
+    except BadRequest:
+        return jsonify({"code": 400, "error": "invalid json"}), 400
+
+    device_id = body.get('device_id')
+    question = body.get('question')
+
+    if device_id is None:
+        return jsonify({"code": 404, "error": "missing `device_id`"}), 404
+    if question is None:
+        return jsonify({"code": 400, "error": "missing `question`"}), 400
+
+    llm_service = current_app.config.get('LLM_SERVICE')
+    if not llm_service:
+        return jsonify({"code": 500, "error": "LLM service not configured"}), 500
+
+    try:
+        result = llm_service.generate_advice({
+            "device_id": device_id,
+            "question": question
+        })
+        return jsonify({"code": 200, "data": result}), 200
+    except Exception:
+        return jsonify({"code": 500, "error": "LLM service error"}), 500
