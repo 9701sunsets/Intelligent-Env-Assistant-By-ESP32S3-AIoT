@@ -9,5 +9,9 @@
 		{
 			"path": "frontend"
 		}
-	]
+	],
+	"settings": {
+		"cmake.sourceDirectory": "${workspaceFolder:esp32_firmware}",
+		"cmake.configureOnOpen": true
+	}
 }
