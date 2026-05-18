@@ -8,13 +8,10 @@
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "led_control.h"
 
 static const char *TAG = "wifi_manager";
 static EventGroupHandle_t s_wifi_event_group;
-
-/* 如果你希望 manager 控制 LED，可以在这里声明外部回调（可选）
-extern void connect_display(uint8_t flag);
-*/
 
 EventGroupHandle_t wifi_manager_get_event_group(void)
 {
@@ -25,21 +22,25 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         ESP_LOGI(TAG, "WIFI_EVENT_STA_START");
+        led_display_wifi_connecting();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         ESP_LOGI(TAG, "WIFI disconnected, reconnecting...");
         esp_wifi_connect();
+        led_display_wifi_connecting();
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "Got IP:" IPSTR, IP2STR(&event->ip_info.ip));
         xEventGroupSetBits(s_wifi_event_group, BIT0); // CONNECTED_BIT
+        led_display_wifi_connected();
     }
 }
 
-/* SmartConfig 和 SC 事件处理（简化自你的 main.c 实现） */
+/* SmartConfig 和 SC 事件处理（简化） */
 static void sc_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
     if (event_id == SC_EVENT_SCAN_DONE) {
         ESP_LOGI(TAG, "SC_EVENT_SCAN_DONE");
+        led_display_wifi_connecting();
     } else if (event_id == SC_EVENT_FOUND_CHANNEL) {
         ESP_LOGI(TAG, "SC_EVENT_FOUND_CHANNEL");
     } else if (event_id == SC_EVENT_GOT_SSID_PSWD) {
@@ -52,6 +53,7 @@ static void sc_event_handler(void* arg, esp_event_base_t event_base, int32_t eve
         ESP_ERROR_CHECK(esp_wifi_disconnect());
         ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
         ESP_ERROR_CHECK(esp_wifi_connect());
+        led_display_wifi_connecting();
     } else if (event_id == SC_EVENT_SEND_ACK_DONE) {
         xEventGroupSetBits(s_wifi_event_group, BIT1); // ESPTOUCH_DONE_BIT
     }
