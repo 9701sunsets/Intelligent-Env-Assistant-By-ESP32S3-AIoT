@@ -1,0 +1,6 @@
+{
+  "name": "Smart Environment Monitor",
+  "description": "基于 ESP32-S3 与云端大模型的智能环境监测助手 - 包含环境感知、舒适度判断、实时图表、AI 建议、智能聊天及设备控制的闭环演示。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
