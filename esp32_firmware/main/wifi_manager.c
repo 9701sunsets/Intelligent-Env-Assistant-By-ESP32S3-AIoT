@@ -4,6 +4,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_mac.h"
 #include "esp_smartconfig.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
@@ -12,6 +13,21 @@
 
 static const char *TAG = "wifi_manager";
 static EventGroupHandle_t s_wifi_event_group;
+
+static void esp_log_buffer_hex_safe(const char *tag, const void *buffer, size_t len)
+{
+    const uint8_t *b = (const uint8_t *)buffer;
+    char line[3 * 16 + 1];
+    for (size_t off = 0; off < len; off += 16) {
+        size_t chunk = (len - off) > 16 ? 16 : (len - off);
+        char *p = line;
+        for (size_t i = 0; i < chunk; ++i) {
+            p += sprintf(p, "%02x ", b[off + i]);
+        }
+        *p = '\0';
+        ESP_LOGI(tag, "%s", line);
+    }
+}
 
 EventGroupHandle_t wifi_manager_get_event_group(void)
 {
@@ -42,12 +58,37 @@ static void sc_event_handler(void* arg, esp_event_base_t event_base, int32_t eve
         ESP_LOGI(TAG, "SC_EVENT_SCAN_DONE");
         led_display_wifi_connecting();
     } else if (event_id == SC_EVENT_FOUND_CHANNEL) {
-        ESP_LOGI(TAG, "SC_EVENT_FOUND_CHANNEL");
+        if (event_data) {
+            ESP_LOGI(TAG, "SC_EVENT_FOUND_CHANNEL (raw):");
+            esp_log_buffer_hex_safe(TAG, event_data, 8); // 打印前 8 字节进行调试
+    } else {
+        ESP_LOGW(TAG, "SC_EVENT_FOUND_CHANNEL with NULL data");
+    }
     } else if (event_id == SC_EVENT_GOT_SSID_PSWD) {
+        if (!event_data) {
+            ESP_LOGW(TAG, "SC_EVENT_GOT_SSID_PSWD with NULL data");
+            return;
+        }
         ESP_LOGI(TAG, "SC_EVENT_GOT_SSID_PSWD");
         smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
-        wifi_config_t wifi_config;
-        bzero(&wifi_config, sizeof(wifi_config));
+
+        char ssid[33] = {0}, pwd[65] = {0};
+        memcpy(ssid, evt->ssid, sizeof(evt->ssid));
+        memcpy(pwd, evt->password, sizeof(evt->password));
+        ESP_LOGI(TAG, "Received SSID: %s", ssid);
+        ESP_LOGI(TAG, "Received PWD: %s", pwd);
+        ESP_LOGI(TAG, "bssid_set=%d, type=%d", evt->bssid_set, evt->type);
+
+        if (evt->type == SC_TYPE_ESPTOUCH_V2) {
+            uint8_t rvd_data[33] = {0};
+            if (esp_smartconfig_get_rvd_data(rvd_data, sizeof(rvd_data)) == ESP_OK) {
+                esp_log_buffer_hex_safe(TAG, rvd_data, sizeof(rvd_data));
+            } else {
+                ESP_LOGW(TAG, "No RVD data");
+            }
+        }
+
+        wifi_config_t wifi_config = {0};
         memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(evt->ssid));
         memcpy(wifi_config.sta.password, evt->password, sizeof(evt->password));
         ESP_ERROR_CHECK(esp_wifi_disconnect());
@@ -55,19 +96,29 @@ static void sc_event_handler(void* arg, esp_event_base_t event_base, int32_t eve
         ESP_ERROR_CHECK(esp_wifi_connect());
         led_display_wifi_connecting();
     } else if (event_id == SC_EVENT_SEND_ACK_DONE) {
-        xEventGroupSetBits(s_wifi_event_group, BIT1); // ESPTOUCH_DONE_BIT
+        xEventGroupSetBits(s_wifi_event_group, BIT1);
     }
 }
 
 esp_err_t wifi_manager_init(void)
 {
     esp_err_t err;
-    s_wifi_event_group = xEventGroupCreate();
+
+    // 初始化 TCP/IP 网络接口
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    // 创建默认的Wi-Fi STA网络接口
+    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
+    if(!sta_netif) {
+        ESP_LOGE(TAG, "esp_netif_create_default_wifi_sta failed");
+        return ESP_FAIL;
+    }
+    s_wifi_event_group = xEventGroupCreate();
+
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &sc_event_handler, NULL));
+    
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     err = esp_wifi_init(&cfg);
     return err;

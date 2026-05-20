@@ -34,6 +34,9 @@ void app_main(void)
     led_init(); // 初始化 LED
     led_control_init(); // 初始化 LED 控制
     wifi_manager_init(); // 初始化 Wi-Fi 管理器
+    esp_log_level_set("smartconfig", ESP_LOG_DEBUG); // 设置 SmartConfig 模块的日志级别为 DEBUG
+    esp_log_level_set("wifi", ESP_LOG_DEBUG); // 设置 Wi-Fi 管理器模块的日志级别为 DEBUG
+    esp_log_level_set("wifi_manager", ESP_LOG_DEBUG); // 设置 Wi-Fi 管理器模块的日志级别为 DEBUG
     wifi_manager_start_smartconfig(); // 启动 SmartConfig 配网
 
 }
