@@ -6,7 +6,7 @@ idf_component_register(
         "sensor/light_sensor.c"
         "sensor/dht11.c"
         "ui/led_control.c"
-        "cloud/mqtt_client.c"
+        "cloud/mqtt_clients.c"
         "utils/json_parser.c"
         "ai/comfort_ai.c"
 
@@ -18,7 +18,7 @@ idf_component_register(
         esp_event
         esp_netif
         esp_adc
-        esp_mqtt
+        mqtt
         cjson
     INCLUDE_DIRS "."
 )

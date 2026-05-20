@@ -4,7 +4,8 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_sntp.h"
-#include "cloud/mqtt_client.h"
+#include "esp_wifi.h"
+#include "cloud/mqtt_clients.h"
 #include "utils/json_parser.h"
 #include "ai/comfort_ai.h"
 #include "sensor/dht11.h"
@@ -15,11 +16,16 @@
 
 static const char *TAG = "mqtt_task";
 
+static const char *broker_host = "192.168.46.159"; // 替换为实际的 MQTT 代理主机地址
+static const int broker_port = 1883; // 替换为实际的 MQTT 代理端口
+
 static void initialize_sntp(void)
 {
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "pool.ntp.org");
+    esp_sntp_init();
+    setenv("TZ", "CST-8", 1); // 设置时区为中国标准时间
+    tzset();
     // 不阻塞太久，这里只是触发同步，mqtt 时间戳若为空也可接受
 }
 
@@ -27,11 +33,11 @@ static char *get_iso_ts(char *buf, size_t len)
 {
     time_t now = time(NULL);
     struct tm tm;
-    if (gmtime_r(&now, &tm) == NULL) {
+    if (localtime_r(&now, &tm) == NULL) {
         buf[0] = '\0';
         return buf;
     }
-    strftime(buf, len, "%Y-%m-%dT%H:%M:%SZ", &tm);
+    strftime(buf, len, "%Y-%m-%dT%H:%M:%Sz", &tm);
     return buf;
 }
 
@@ -43,7 +49,7 @@ void mqtt_main_task(void *arg)
 
     initialize_sntp();
 
-    mqtt_client_init_with_broker("192.168.1.100", 1883, "esp32_001");
+    mqtt_client_init_with_broker(broker_host, broker_port, "esp32_001");
     mqtt_client_start();
 
     dht11_init(GPIO_NUM_1);

@@ -17,7 +17,9 @@
 #include "sensor/light_sensor.h"
 #include "sensor/dht11.h"
 #include "ui/led_control.h"
-#include "cloud/mqtt_client.h"
+#include "cloud/mqtt_clients.h"
+
+extern void mqtt_main_task(void *arg);
 
 /**
  * @brief 应用程序的主入口点
@@ -40,4 +42,6 @@ void app_main(void)
     esp_log_level_set("wifi_manager", ESP_LOG_DEBUG); // 设置 Wi-Fi 管理器模块的日志级别为 DEBUG
     wifi_manager_start_smartconfig(); // 启动 SmartConfig 配网
 
+    // 创建 MQTT 客户端任务
+    xTaskCreate(mqtt_main_task, "mqtt_main_task", 8192, NULL, 5, NULL);
 }
