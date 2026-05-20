@@ -84,14 +84,14 @@ static void send_lcd_cmd(lcd_cmd_t cmd)
     if (s_lcd_queue)
     {
         lcd_msg_t msg = { .cmd = cmd };
-        xQueueSend(s_lcd_queue, &msg); // 发送命令到LCD任务
+        xQueueSend(s_lcd_queue, &msg, portMAX_DELAY); // 发送命令到LCD任务
     }
 }
 
-void led_display_wifi_connecting(void) { send_cmd(LCD_CMD_WIFI_CONNECTING); }
-void led_display_wifi_connected(void)  { send_cmd(LCD_CMD_WIFI_CONNECTED); }
-void led_display_error(void)           { send_cmd(LCD_CMD_ERROR); }
-void led_display_off(void)             { send_cmd(LCD_CMD_OFF); } 
+void led_display_wifi_connecting(void) { send_lcd_cmd(LCD_CMD_WIFI_CONNECTING); }
+void led_display_wifi_connected(void)  { send_lcd_cmd(LCD_CMD_WIFI_CONNECTED); }
+void led_display_error(void)           { send_lcd_cmd(LCD_CMD_ERROR); }
+void led_display_off(void)             { send_lcd_cmd(LCD_CMD_OFF); } 
 
 // /**
 //  * @brief 根据Wi-Fi连接状态设置LED颜色的函数

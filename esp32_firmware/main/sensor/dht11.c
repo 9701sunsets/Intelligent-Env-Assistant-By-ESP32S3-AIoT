@@ -3,30 +3,31 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <driver/gpio.h>
-#include <driver/adc.h>
+#include "soc/adc_channel.h"
 #include <esp_err.h>
+#include "esp_rom_sys.h"
 
 // 定义DHT11传感器连接的GPIO引脚
-#define DHT11_PIN ADC1_CHANNEL_0 // GPIO_NUM_1
+#define DHT11_PIN GPIO_NUM_1
 
 static void line_low() { gpio_set_direction(DHT11_PIN, GPIO_MODE_OUTPUT); gpio_set_level(DHT11_PIN, 0); }
 static void line_high_input() { gpio_set_direction(DHT11_PIN, GPIO_MODE_INPUT); }
 
-esp_err_t dht11_init()
+esp_err_t dht11_init(gpio_num_t pin)
 {
-    gpio_reset_pin(DHT11_PIN);
-    gpio_set_direction(DHT11_PIN, GPIO_MODE_INPUT);
+    gpio_reset_pin(pin);
+    gpio_set_direction(pin, GPIO_MODE_INPUT);
     return ESP_OK;
 }
 
-esp_err_t dht11_read(int *temperature, int *humidity)
+esp_err_t dht11_read(gpio_num_t pin, int *temperature, int *humidity)
 {
     uint8_t data[5] = {0};
     // 启动信号
     line_low();
-    ets_delay_us(18000); // >18ms
+    esp_rom_delay_us(18000); // >18ms
     line_high_input();
-    ets_delay_us(40);
+    esp_rom_delay_us(40);
 
     // 等待应答：主机拉高后 DHT 拉低 ~80us，再拉高 ~80us
     int timeout = 0;
@@ -41,7 +42,7 @@ esp_err_t dht11_read(int *temperature, int *humidity)
         // 先等低电平（start），再测高电平时长
         timeout = 0; while (gpio_get_level(DHT11_PIN) == 0) { if (++timeout > 1000) return ESP_ERR_TIMEOUT; }
         // 高电平开始，计时长度决定 0/1
-        ets_delay_us(35);
+        esp_rom_delay_us(35);
         if (gpio_get_level(DHT11_PIN) == 1) {
             data[i/8] <<= 1;
             data[i/8] |= 1;

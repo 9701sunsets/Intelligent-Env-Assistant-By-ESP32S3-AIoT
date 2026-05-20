@@ -8,7 +8,7 @@
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
-#include "led_control.h"
+#include "ui/led_control.h"
 
 static const char *TAG = "wifi_manager";
 static EventGroupHandle_t s_wifi_event_group;

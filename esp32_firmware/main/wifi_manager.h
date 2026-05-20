@@ -2,6 +2,7 @@
 #define WIFI_MANAGER_H
 
 #include <esp_err.h>
+#include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
 esp_err_t wifi_manager_init(void);

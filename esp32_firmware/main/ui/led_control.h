@@ -2,6 +2,7 @@
 #define __LED_CONTROL_H
 
 #include <stdint.h>
+#include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
 void led_control_init(void);

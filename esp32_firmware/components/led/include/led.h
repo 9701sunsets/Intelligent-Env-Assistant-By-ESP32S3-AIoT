@@ -20,7 +20,6 @@ typedef struct {
 } effect_t;
 
 extern led_strip_handle_t led_strip;//灯带句柄
-extern const char *TAG;
 
 void led_init(void);
 void led_set_rgb(uint8_t r, uint8_t g, uint8_t b);
