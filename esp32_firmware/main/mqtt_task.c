@@ -4,8 +4,9 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_sntp.h"
-#include "mqtt_client.h"
-#include "json_parser.h"
+#include "cloud/mqtt_client.h"
+#include "utils/json_parser.h"
+#include "ai/comfort_ai.h"
 #include "sensor/dht11.h"
 #include "sensor/light_sensor.h"
 #include "wifi_manager.h"
@@ -49,11 +50,26 @@ void mqtt_main_task(void *arg)
     init_light_sensor();
 
     while (1) {
+        // 读取传感器数据
         int temp=0, hum=0;
         dht11_read(GPIO_NUM_1, &temp, &hum);
         int light = read_light_raw();
+
+        // 获取 RSSI
+        int wifi_rssi = -127;
+        wifi_ap_record_t ap_info;
+        if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
+            wifi_rssi = ap_info.rssi;
+        }
+
+        // 计算舒适度
+        const char *comfort = comfort_ai_evaluate((float)temp, (float)hum, light);
+
+        // 时间戳
         char ts[64]; get_iso_ts(ts, sizeof(ts));
-        cJSON *up = json_create_upload("esp32_001", (double)temp, (double)hum, light, "comfortable", -48, ts);
+
+        // 创建并发布
+        cJSON *up = json_create_upload("esp32_001", (double)temp, (double)hum, light, comfort, wifi_rssi, ts);
         mqtt_publish_upload_json(up);
         cJSON_Delete(up);
 

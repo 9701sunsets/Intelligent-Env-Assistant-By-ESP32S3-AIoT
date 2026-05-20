@@ -4,7 +4,7 @@
 #include "esp_netif.h"
 #include "lwip/inet.h"
 #include "cJSON.h"
-#include "json_parser.h"
+#include "utils/json_parser.h"
 #include <string.h>
 #include "wifi_manager.h"
 #include "ui/led_control.h"
@@ -19,6 +19,7 @@ static const char *TOPIC_UPLOAD = "aiot/service/upload";
 static const char *TOPIC_STATUS = "aiot/service/status";
 static const char *TOPIC_CONTROL = "aiot/device/control";
 
+// MQTT事件处理函数
 static void mqtt_event_handler(esp_mqtt_event_handle_t event)
 {
     switch (event->event_id) {
@@ -48,6 +49,7 @@ static void mqtt_event_handler(esp_mqtt_event_handle_t event)
     }
 }
 
+// 初始化MQTT客户端
 esp_err_t mqtt_client_init_with_broker(const char *broker_host, int broker_port, const char *device_id)
 {
     if (broker_host) strncpy(g_broker_host, broker_host, sizeof(g_broker_host)-1);

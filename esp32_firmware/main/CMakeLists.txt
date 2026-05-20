@@ -8,6 +8,7 @@ idf_component_register(
         "ui/led_control.c"
         "cloud/mqtt_client.c"
         "utils/json_parser.c"
+        "ai/comfort_ai.c"
 
     PRIV_REQUIRES 
         spi_flash

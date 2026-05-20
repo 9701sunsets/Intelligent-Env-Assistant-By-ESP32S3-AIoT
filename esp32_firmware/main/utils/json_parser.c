@@ -32,6 +32,7 @@ cJSON *json_create_status(const char *device_id, const char *status, const char 
     return root;
 }
 
+// 解析控制消息，返回 0=ok, -1=error. 若目标为 led，则填充 color/state/value（buffer/ints）
 int json_parse_control_led(const char *payload, size_t len,
                            char *out_msg_id, size_t msg_id_len,
                            char *out_state, size_t state_len,
