@@ -2,9 +2,12 @@ idf_component_register(
     SRCS 
         "main.c" 
         "wifi_manager.c"
+        "mqtt_task.c"
         "sensor/light_sensor.c"
         "sensor/dht11.c"
         "ui/led_control.c"
+        "cloud/mqtt_client.c"
+        "utils/json_parser.c"
 
     PRIV_REQUIRES 
         spi_flash
@@ -14,5 +17,7 @@ idf_component_register(
         esp_event
         esp_netif
         esp_adc
+        esp_mqtt
+        cjson
     INCLUDE_DIRS "."
 )

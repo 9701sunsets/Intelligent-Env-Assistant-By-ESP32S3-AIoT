@@ -10,13 +10,14 @@
 #include "esp_netif.h"
 #include "lwip/inet.h"
 #include "esp_smartconfig.h"
-// #include "esp_wpa2.h"
+#include "esp_sntp.h"
 
 #include "led.h"
 #include "wifi_manager.h"
 #include "sensor/light_sensor.h"
 #include "sensor/dht11.h"
 #include "ui/led_control.h"
+#include "cloud/mqtt_client.h"
 
 /**
  * @brief 应用程序的主入口点
