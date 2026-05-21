@@ -6,13 +6,74 @@
 #include "esp_netif.h"
 #include "esp_mac.h"
 #include "esp_smartconfig.h"
-#include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "ui/led_control.h"
+#include "esp_http_server.h"
+#include "esp_http_client.h"
+#include "cJSON.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+
+#define WIFI_NVS_NS "wifi"
 
 static const char *TAG = "wifi_manager";
 static EventGroupHandle_t s_wifi_event_group;
+static httpd_handle_t s_http_server = NULL;
+static bool s_ap_netif_created = false;
+
+static const char *g_config_page =
+"<html><head><meta charset='utf-8'><title>ESP Config</title></head>"
+"<body><h3>配置 Wi-Fi</h3>"
+"<form method='post' action='/config'>"
+"SSID: <input name='ssid'><br>"
+"Password: <input name='password' type='password'><br>"
+"<input type='submit' value='提交'>"
+"</form></body></html>";
+
+static void wifi_apply_config_task(void *arg)
+{
+    wifi_config_t cfg = *(wifi_config_t *)arg;
+    free(arg);
+
+    ESP_LOGI(TAG, "Applying WiFi config: SSID=%s", cfg.sta.ssid);
+
+    if (s_http_server) {
+        httpd_stop(s_http_server);
+        s_http_server = NULL;
+        ESP_LOGI(TAG, "HTTP server stopped");
+    }
+
+    esp_err_t err;
+
+    err = esp_wifi_stop();
+    ESP_LOGI(TAG, "esp_wifi_stop -> %s", esp_err_to_name(err));
+
+    err = esp_wifi_set_mode(WIFI_MODE_STA);
+    ESP_LOGI(TAG, "esp_wifi_set_mode(STA) -> %s", esp_err_to_name(err));
+
+    err = esp_wifi_set_config(WIFI_IF_STA, &cfg);
+    ESP_LOGI(TAG, "esp_wifi_set_config(WIFI_IF_STA) -> %s", esp_err_to_name(err));
+
+    err = esp_wifi_start();
+    ESP_LOGI(TAG, "esp_wifi_start -> %s", esp_err_to_name(err));
+
+    err = esp_wifi_connect();
+    ESP_LOGI(TAG, "esp_wifi_connect -> %s", esp_err_to_name(err));
+
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, BIT0, pdFALSE, pdFALSE, pdMS_TO_TICKS(20000));
+    if (bits & BIT0) {
+        ESP_LOGI(TAG, "Connected to AP %s", cfg.sta.ssid);
+    } else {
+        ESP_LOGW(TAG, "Failed to connect to AP %s within timeout, restarting SoftAP HTTP", cfg.sta.ssid);
+        // 若失败：清理并重启 softAP/http，便于用户重试
+        esp_wifi_stop();
+        wifi_manager_start_softap_http();
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(100)); // 给驱动一点时间
+    vTaskDelete(NULL);
+}
 
 static void esp_log_buffer_hex_safe(const char *tag, const void *buffer, size_t len)
 {
@@ -40,7 +101,8 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
         ESP_LOGI(TAG, "WIFI_EVENT_STA_START");
         led_display_wifi_connecting();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        ESP_LOGI(TAG, "WIFI disconnected, reconnecting...");
+        wifi_event_sta_disconnected_t *evt = (wifi_event_sta_disconnected_t *)event_data;
+        ESP_LOGI(TAG, "WIFI disconnected, reason=%d", evt ? evt->reason : -1);
         esp_wifi_connect();
         led_display_wifi_connecting();
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
@@ -137,14 +199,21 @@ void wifi_manager_start_smartconfig(void)
 void wifi_manager_start_softap(void)
 {
     ESP_LOGI(TAG, "Starting softAP");
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    
+    // 只在未创建时创建 AP 默认 netif，避免重复创建导致断言
+    if (!s_ap_netif_created) {
+        esp_netif_create_default_wifi_ap();
+        s_ap_netif_created = true;
+    }
+    // 只设置模式和配置，启动由外层控制（配合 HTTP server）
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+
+    // TODO 参数封装
     wifi_config_t wifi_config = {
         .ap = {
-            .ssid = "ESP32S3 WIFI",
+            .ssid = "ESP_SoftAP",
             .ssid_len = 0,
-            .password = "123456789",
+            .password = "12345678",
             .max_connection = 5,
             .authmode = WIFI_AUTH_WPA_WPA2_PSK
         },
@@ -164,238 +233,173 @@ void wifi_manager_scan(void)
     ESP_ERROR_CHECK(esp_wifi_scan_start(NULL, true));
 }
 
-/**
- * @brief WIFI链接回调函数/Wi-Fi事件处理函数，根据不同的事件类型更新LED颜色并打印相关信息
- * @param arg 事件处理函数的参数
- * @param event_base 事件基础，指示事件所属的模块
- * @param event_id 事件ID，指示事件的具体类型
- * @param event_data 事件数据，包含与事件相关的详细信息
- */
-/* static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
+static esp_err_t save_wifi_config_nvs(const wifi_config_t *cfg)
 {
-    static int s_retry_num = 0;
+    nvs_handle_t h;
+    if (nvs_open(WIFI_NVS_NS, NVS_READWRITE, &h) != ESP_OK) return ESP_FAIL;
+    esp_err_t err = nvs_set_blob(h, "sta_cfg", cfg, sizeof(wifi_config_t));
+    if (err == ESP_OK) nvs_commit(h);
+    nvs_close(h);
+    return err;
+}
 
-    // 扫描到要连接的WIFI事件
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
-    {
-        connect_display(0); // 正在连接，设置LED为黄色
-        esp_wifi_connect();
-    }
-    // 链接WIFI事件
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED)
-    {
-        connect_display(2); // 连接成功，设置LED为蓝色
-    }
-    // 链接失败事件
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
-    {
-        // 尝试链接
-        if (s_retry_num < 20)
-        {
-            esp_wifi_connect();
-            s_retry_num++;
-            ESP_LOGI(TAG, "Retrying to connect to the AP");
-        } 
-        else
-        {
-            connect_display(1); // 连接失败，设置LED为红色
-            ESP_LOGI(TAG, "Failed to connect to the AP");
-            xEventGroupSetBits(wifi_event_group, WIFI_FAIL_BIT); // 设置连接失败事件标志
+static esp_err_t load_wifi_config_nvs(wifi_config_t *cfg)
+{
+    nvs_handle_t h;
+    size_t required = sizeof(wifi_config_t);
+    if (nvs_open(WIFI_NVS_NS, NVS_READONLY, &h) != ESP_OK) return ESP_ERR_NVS_NOT_FOUND;
+    esp_err_t err = nvs_get_blob(h, "sta_cfg", cfg, &required);
+    nvs_close(h);
+    return err;
+}
+
+static esp_err_t http_get_root(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_send(req, g_config_page, strlen(g_config_page));
+    return ESP_OK;
+}
+
+/* URL decode helper */
+static void url_decode(char *dst, const char *src)
+{
+    while (*src) {
+        if (*src == '%') {
+            char hex[3] = { src[1], src[2], 0 };
+            *dst++ = (char) strtol(hex, NULL, 16);
+            src += 3;
+        } else if (*src == '+') {
+            *dst++ = ' ';
+            src++;
+        } else {
+            *dst++ = *src++;
         }
     }
-    // 工作站从链接的Wi-Fi网络获取IP地址事件
-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
-    {
-        connect_display(2); // 连接成功，设置LED为蓝色
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
-        s_retry_num = 0; // 重置重试次数
-        xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT); // 设置连接成功事件标志
-    }
-} */
+    *dst = '\0';
+}
 
-/**
- * @brief 初始化Wi-Fi连接的函数，创建事件组并注册Wi-Fi事件处理函数
- */
-/* void wifi_sta_init(void)
+static esp_err_t http_post_config(httpd_req_t *req)
 {
-    static esp_netif_t *sta_netif = NULL;
-    wifi_event_group = xEventGroupCreate(); // 创建一个事件标志组
-    // 网卡初始化
-    ESP_ERROR_CHECK(esp_netif_init()); 
-    // 创建新的事件循环
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    sta_netif = esp_netif_create_default_wifi_sta();
-    assert(sta_netif);
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    wifi_config_t wifi_config = WIFICONFIG();
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    // 等待链接成功后IP生成
-    EventBits_t bits = xEventGroupWaitBits(wifi_event_group, 
-        WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, 
-        pdFALSE, 
-        pdFALSE, 
-        portMAX_DELAY);
-
-    // 根据事件标志判断链接结果
-    if (bits & WIFI_CONNECTED_BIT)
-    {        
-        ESP_LOGI(TAG, "Connected to AP SSID:%s password:%s", DEFAULT_SSID, DEFAULT_PASSWORD);
+    int content_len = req->content_len;
+    if (content_len <= 0) {
+        httpd_resp_send_404(req);
+        return ESP_FAIL;
     }
-    else if (bits & WIFI_FAIL_BIT)
-    {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s", DEFAULT_SSID, DEFAULT_PASSWORD);
+
+    char *buf = calloc(1, content_len + 1);
+    if (!buf) return ESP_FAIL;
+    int ret = httpd_req_recv(req, buf, content_len);
+    buf[ret] = '\0';
+
+    char ssid[33] = {0}, pwd[65] = {0};
+    // 使用 esp_http_server 提供的解析器解析 application/x-www-form-urlencoded
+    httpd_query_key_value(buf, "ssid", ssid, sizeof(ssid));
+    httpd_query_key_value(buf, "password", pwd, sizeof(pwd));
+    free(buf);
+
+    if (strlen(ssid) == 0) {
+        httpd_resp_sendstr(req, "ssid empty");
+        return ESP_FAIL;
     }
-    else
-    {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT");
-    }
-} */
 
-/**
- * @brief Wi-Fi事件处理函数，根据不同的事件类型更新LED颜色并打印相关信息
- * @param arg 事件处理函数的参数
- * @param event_base 事件基础，指示事件所属的模块
- * @param event_id 事件ID，指示事件的具体类型
- * @param event_data 事件数据，包含与事件相关的详细信息
- */
-/* static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
-{
-    // 设备链接
-    if (event_id == WIFI_EVENT_AP_STACONNECTED)
-    {
-        wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-        ESP_LOGI(TAG_AP, "Station " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
-        // 连接成功，设置LED为蓝色
-        connect_display(2);
-    }
-    // 设备断开链接
-    else if (event_id == WIFI_EVENT_AP_STADISCONNECTED)
-    {
-        wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-        ESP_LOGI(TAG_AP, "Station " MACSTR " leave, AID=%d", MAC2STR(event->mac), event->aid);
-        // 连接失败，设置LED为红色
-        connect_display(1);
-    }
-} */
-
-/**
- * @brief 一键配网回调函数
- * @param parm 参数
- */
-/* static void smartconfig_task(void * parm)
-{
-    parm = parm; // 避免编译器警告未使用参数
-    EventBits_t uxBits;
-    // 设置配网协议
-    ESP_ERROR_CHECK(esp_smartconfig_set_type(SC_TYPE_ESPTOUCH));
-    // 设置配网参数
-    smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
-    // 启动配网
-    ESP_ERROR_CHECK(esp_smartconfig_start(&cfg));
-
-    while(1) 
-    {
-        // 获取事件
-        uxBits = xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
-
-        if(uxBits & CONNECTED_BIT) 
-        {
-            ESP_LOGI(TAG, "Wi-Fi Connected to ap");
-        }
-
-        if(uxBits & ESPTOUCH_DONE_BIT) 
-        {
-            ESP_LOGI(TAG, "Smartconfig over");
-            esp_smartconfig_stop(); // 停止配网
-            vTaskDelete(NULL); // 删除当前任务
+    // 防止用户误把当前设备 AP SSID 填入（避免连到自己）
+    wifi_config_t ap_cfg;
+    if (esp_wifi_get_config(WIFI_IF_AP, &ap_cfg) == ESP_OK) {
+        if (strcmp((char*)ap_cfg.ap.ssid, ssid) == 0) {
+            httpd_resp_sendstr(req, "SSID is device AP; please enter your router SSID.");
+            return ESP_FAIL;
         }
     }
-} */
 
-/**
- * @brief Wi-Fi事件处理函数，根据不同的事件类型更新LED颜色并打印相关信息
- * @param arg 事件处理函数的参数
- * @param event_base 事件基础，指示事件所属的模块
- * @param event_id 事件ID，指示事件的具体类型
- * @param event_data 事件数据，包含与事件相关的详细信息
- */
-/* static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
-{
-    if(event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
-    {
-        xTaskCreate(smartconfig_task, "smartconfig_task", 4096, NULL, 3, NULL);
-    }
-    else if(event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
-    {
-        esp_wifi_connect();
-        xEventGroupClearBits(s_wifi_event_group, CONNECTED_BIT);
-    }
-    else if(event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
-    {
-        xEventGroupSetBits(s_wifi_event_group, CONNECTED_BIT);
-    }
-    else if(event_base == SC_EVENT && event_id == SC_EVENT_SCAN_DONE)
-    {
-        ESP_LOGI(TAG, "Scan done");
-        connect_display(0); // 正在连接，设置LED为黄色
-    }
-    else if(event_base == SC_EVENT && event_id == SC_EVENT_FOUND_CHANNEL)
-    {
-        ESP_LOGI(TAG, "Found channel");
-    }
-    else if(event_base == SC_EVENT && event_id == SC_EVENT_GOT_SSID_PSWD)
-    {
-        ESP_LOGI(TAG, "Got SSID and password");
+    wifi_config_t wifi_cfg = {0};
+    strncpy((char*)wifi_cfg.sta.ssid, ssid, sizeof(wifi_cfg.sta.ssid)-1);
+    strncpy((char*)wifi_cfg.sta.password, pwd, sizeof(wifi_cfg.sta.password)-1);
 
-        smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
-        wifi_config_t wifi_config;
-        uint8_t ssid[33] = {0};
-        uint8_t password[65] = {0};
-        uint8_t rvd_data[33] = {0};
-
-        bzero(&wifi_config, sizeof(wifi_config_t));
-        memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
-        memcpy(wifi_config.sta.password, evt->password, sizeof(wifi_config.sta.password));
-        wifi_config.sta.bssid_set = evt->bssid_set;
-
-        if(wifi_config.sta.bssid_set == true) 
-        {
-            memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
+    if (save_wifi_config_nvs(&wifi_cfg) == ESP_OK) {
+        // 读回验证，便于调试
+        wifi_config_t verify = {0};
+        if (load_wifi_config_nvs(&verify) == ESP_OK) {
+            ESP_LOGI(TAG, "Saved NVS SSID=%s, PWD(len)=%d", verify.sta.ssid, (int)strlen((char*)verify.sta.password));
+        } else {
+            ESP_LOGW(TAG, "Failed to read back saved NVS");
         }
 
-        memcpy(ssid, evt->ssid, sizeof(evt->ssid));
-        memcpy(password, evt->password, sizeof(evt->password));
-        ESP_LOGI(TAG, "SSID:%s", ssid);
-        ESP_LOGI(TAG, "PASSWORD:%s", password);
-        connect_display(2); // 连接成功，设置LED为蓝色
+        httpd_resp_sendstr(req, "OK, saved. Device will connect.");
 
-        // 手机APPEspTouch软件使用ESPTOUCH V2模式，会执行如下代码获取手机发送的额外数据（如果有的话）
-        if(evt->type == SC_TYPE_ESPTOUCH_V2) 
-        {
-            ESP_ERROR_CHECK(esp_smartconfig_get_rvd_data(rvd_data, sizeof(rvd_data)));
-            ESP_LOGI(TAG, "RVD DATA:");
-
-            for(int i = 0; i < sizeof(rvd_data); i++) 
-            {
-                printf("%02x ", rvd_data[i]);
+        // 在独立任务中应用配置（你已有 wifi_apply_config_task）
+        wifi_config_t *task_arg = malloc(sizeof(wifi_config_t));
+        if (task_arg) {
+            *task_arg = wifi_cfg;
+            if (xTaskCreate(wifi_apply_config_task, "wifi_apply", 4096, task_arg, 5, NULL) != pdPASS) {
+                free(task_arg);
+                ESP_LOGW(TAG, "Failed to create wifi_apply task");
             }
+        }
+        return ESP_OK;
+    } else {
+        httpd_resp_sendstr(req, "NVS save failed");
+        return ESP_FAIL;
+    }
+}
 
-            printf("\n");
-        } 
-        
-        ESP_ERROR_CHECK(esp_wifi_disconnect());
-        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-        ESP_ERROR_CHECK(esp_wifi_connect());
+void wifi_manager_start_softap_http(void)
+{
+    // 启 SoftAP（复用已有 start_softap 实现或稍改）
+    wifi_manager_start_softap();
+
+    // 启动 http server
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    if (httpd_start(&s_http_server, &config) == ESP_OK) {
+        httpd_uri_t uri_get = {
+            .uri = "/",
+            .method = HTTP_GET,
+            .handler = http_get_root
+        };
+        httpd_register_uri_handler(s_http_server, &uri_get);
+
+        httpd_uri_t uri_post = {
+            .uri = "/config",
+            .method = HTTP_POST,
+            .handler = http_post_config
+        };
+        httpd_register_uri_handler(s_http_server, &uri_post);
+    } else {
+        ESP_LOGE(TAG, "Failed to start HTTP server");
     }
-    else if(event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE)
-    {
-        xEventGroupSetBits(s_wifi_event_group, ESPTOUCH_DONE_BIT);
+}
+
+void wifi_manager_stop_softap_http(void)
+{
+    if (s_http_server) {
+        httpd_stop(s_http_server);
+        s_http_server = NULL;
     }
-} */
+    // 停止 AP 模式：设为 NULL 或切换到 OFF，再由 STA 模式覆盖
+    // 这里只做最小处理：esp_wifi_stop() 可以在切换前调用（视情况而定）
+    ESP_ERROR_CHECK(esp_wifi_stop());
+}
+
+esp_err_t wifi_manager_auto_connect_or_start_softap(uint32_t timeout_ms)
+{
+    wifi_config_t cfg;
+    if (load_wifi_config_nvs(&cfg) == ESP_OK && strlen((char*)cfg.sta.ssid) > 0) {
+        ESP_LOGI(TAG, "Found stored SSID: %s", cfg.sta.ssid);
+        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &cfg));
+        ESP_ERROR_CHECK(esp_wifi_start());
+        esp_wifi_connect();
+
+        // 等待连接事件（简化：用事件组 BIT0 在 wifi_event_handler 里设置）
+        EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, BIT0, pdFALSE, pdFALSE, pdMS_TO_TICKS(timeout_ms));
+        if (bits & BIT0) {
+            ESP_LOGI(TAG, "Auto connect success");
+            return ESP_OK;
+        }
+        ESP_LOGW(TAG, "Auto connect timeout/fail, start SoftAP HTTP");
+    } else {
+        ESP_LOGI(TAG, "No stored WiFi config, starting SoftAP HTTP");
+    }
+
+    wifi_manager_start_softap_http();
+    return ESP_FAIL;
+}

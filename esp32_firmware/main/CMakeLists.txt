@@ -20,5 +20,7 @@ idf_component_register(
         esp_adc
         mqtt
         cjson
+        esp_http_server
+        esp_http_client
     INCLUDE_DIRS "."
 )
