@@ -3,7 +3,7 @@ import os
 import time
 import logging
 from flask import current_app
-from app.database import save_sensor_data, save_device_info
+from app.database.db import save_sensor_data, save_device_info
 
 logger = logging.getLogger(__name__)
 
