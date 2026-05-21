@@ -25,6 +25,8 @@ import {
   VolumeX,
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
 export default function App() {
   // IoT & Sensor States
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("esp32_001");
@@ -74,7 +76,7 @@ export default function App() {
   // 1. Fetch Master Devices list on mount
   const fetchDevices = async () => {
     try {
-      const res = await fetch("/api/device/list");
+      const res = await fetch(`${API_BASE}/api/device/list`);
       const json = await res.json();
       if (json.code === 200) {
         setDevicesList(json.data);
@@ -87,7 +89,7 @@ export default function App() {
   // 2. Fetch Latest Sensor Data
   const fetchLatestSensorData = async (deviceId: string) => {
     try {
-      const res = await fetch(`/api/latest?device_id=${deviceId}`);
+      const res = await fetch(`${API_BASE}/api/latest?device_id=${deviceId}`);
       const json = await res.json();
       if (json.code === 200) {
         setLatestData(json.data);
@@ -100,7 +102,7 @@ export default function App() {
   // 3. Fetch History Data points for curves
   const fetchHistory = async (deviceId: string) => {
     try {
-      const res = await fetch(`/api/history?device_id=${deviceId}`);
+      const res = await fetch(`${API_BASE}/api/history?device_id=${deviceId}`);
       const json = await res.json();
       if (json.code === 200) {
         setHistoryData(json.data);
@@ -116,7 +118,7 @@ export default function App() {
     setAdviceLoading(true);
     addConsoleLog("Requesting premium Gemini analysis on current parameters...");
     try {
-      const res = await fetch("/api/ai/advice", {
+      const res = await fetch(`${API_BASE}/api/ai/advice`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -146,7 +148,7 @@ export default function App() {
     fetchHistory(selectedDeviceId);
   }, [selectedDeviceId]);
 
-  // Periodic polling fallback to double-guarantee visual live charts & live sync
+  // 周期性轮询兜底，双重保障实时可视化图表与数据实时同步
   useEffect(() => {
     const interval = setInterval(() => {
       fetchLatestSensorData(selectedDeviceId);
@@ -156,7 +158,7 @@ export default function App() {
         fetchDevices();
       }
       setPollerTick(prev => prev + 1);
-    }, 4000);
+    }, 2000);
     return () => clearInterval(interval);
   }, [selectedDeviceId, pollerTick]);
 
@@ -242,7 +244,7 @@ export default function App() {
     addConsoleLog(`Writing GP18 output: setting terminal relay [${target}] to [${targetAction.toUpperCase()}]`);
 
     try {
-      const res = await fetch("/api/device/control", {
+      const res = await fetch(`${API_BASE}/api/device/control`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -281,7 +283,7 @@ export default function App() {
     setChatLoading(true);
 
     try {
-      const res = await fetch("/api/ai/chat", {
+      const res = await fetch(`${API_BASE}/api/ai/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -830,7 +832,7 @@ export default function App() {
                 </span>
                 <div>
                   <h3 className="text-sm font-bold text-[#322013]">AI 语音/文本交互助手</h3>
-                  <p className="text-[10px] text-stone-400Leading-none mt-0.5">对接 Google 智能多模大模型</p>
+                  <p className="text-[10px] text-stone-400Leading-none mt-0.5">对接 Deepseek-v4 智能多模大模型</p>
                 </div>
               </div>
 

@@ -16,7 +16,7 @@
 
 static const char *TAG = "mqtt_task";
 
-static const char *broker_host = "192.168.46.159"; // 替换为实际的 MQTT 代理主机地址
+static const char *broker_host = "192.168.57.159"; // 替换为实际的 MQTT 代理主机地址
 static const int broker_port = 1883; // 替换为实际的 MQTT 代理端口
 
 static void initialize_sntp(void)
@@ -74,6 +74,8 @@ void mqtt_main_task(void *arg)
         // 时间戳
         char ts[64]; get_iso_ts(ts, sizeof(ts));
 
+        ESP_LOGI(TAG, "Sensor reading - Temp=%dC Hum=%d%% Light=%d Comfort=%s RSSI=%ddBm", temp, hum, light, comfort, wifi_rssi);
+
         // 创建并发布
         cJSON *up = json_create_upload("esp32_001", (double)temp, (double)hum, light, comfort, wifi_rssi, ts);
         mqtt_publish_upload_json(up);
@@ -89,6 +91,6 @@ void mqtt_main_task(void *arg)
         mqtt_publish_status_json(st);
         cJSON_Delete(st);
 
-        vTaskDelay(pdMS_TO_TICKS(15000)); // 15s
+        vTaskDelay(pdMS_TO_TICKS(2000)); // 2s
     }
 }

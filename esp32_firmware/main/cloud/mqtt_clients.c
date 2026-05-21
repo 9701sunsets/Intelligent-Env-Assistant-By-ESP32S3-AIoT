@@ -16,8 +16,8 @@ static char g_device_id[48] = "esp32_001";
 static char g_broker_host[64] = {0};
 static int g_broker_port = 1883;
 
-static const char *TOPIC_UPLOAD = "aiot/service/upload";
-static const char *TOPIC_STATUS = "aiot/service/status";
+static const char *TOPIC_UPLOAD = "aiot/device/upload";
+static const char *TOPIC_STATUS = "aiot/device/status";
 static const char *TOPIC_CONTROL = "aiot/device/control";
 
 // MQTT事件处理函数

@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, current_app, request
 from app.database.model import SensorData, DeviceInfo
 from sqlalchemy import desc
 from datetime import datetime
+import time
 
 bp = Blueprint('sensor', __name__, url_prefix='/api')
 
@@ -96,6 +97,8 @@ def history_sensor():
             out.append({
                 "temperature": r.temperature,
                 "humidity": r.humidity,
+                "light": r.light,
+                "comfort": r.comfort,
                 "timestamp": ts_s
             })
         return jsonify({"code": 200, "data": out}), 200
@@ -124,22 +127,32 @@ def device_list():
     }
     """
     SessionLocal = current_app.config.get('DATABASE_SESSION')
-    if not SessionLocal:
-        return jsonify({"code": 500, "error": "database not configured"}), 500
+    data = []
 
-    session = SessionLocal()
-    try:
-        rows = session.query(DeviceInfo).order_by(desc(DeviceInfo.last_seen)).all()
-        if not rows:
-            return jsonify({"code": 404, "error": "no data"}), 404
+    if SessionLocal:
+        session = SessionLocal()
+        try:
+            rows = session.query(DeviceInfo).order_by(desc(DeviceInfo.last_seen)).all()
+            for row in rows:
+                data.append({
+                    "device_id": row.device_id,
+                    "status": row.status or "unknown",
+                    "last_seen": row.last_seen.isoformat() if row.last_seen is not None else None
+                })
+        finally:
+            session.close()
 
-        data = []
-        for row in rows:
+    # 如果 DB 没有数据或为空，使用内存中最近上传的记录回退
+    if not data:
+        latest = current_app.config.get("LATEST_UPLOADS", {})
+        for dev_id, entry in latest.items():
             data.append({
-                "device_id": row.device_id,
-                "status": row.status,
-                "last_seen": row.last_seen.isoformat() if row.last_seen is not None else None
+                "device_id": dev_id,
+                "status": entry.get("data", {}).get("status", "online"),
+                "last_seen": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(entry.get("ts", time.time())))
             })
-        return jsonify({"code": 200, "data": data}), 200
-    finally:
-        session.close()
+
+    if not data:
+        return jsonify({"code": 404, "error": "no data"}), 404
+
+    return jsonify({"code": 200, "data": data}), 200

@@ -82,6 +82,13 @@ def ai_chat():
             "device_id": device_id,
             "question": question
         })
-        return jsonify({"code": 200, "data": result}), 200
-    except Exception:
+        
+        # 处理多种可能的返回结构，确保前端收到 data.answer 字段
+        if isinstance(result, dict):
+            answer = result.get("answer") or result.get("advice") or result.get("text") or ""
+            return jsonify({"code": 200, "data": {"answer": answer}}), 200
+        else:
+            return jsonify({"code": 200, "data": {"answer": str(result)}}), 200
+    except Exception as e:
+        current_app.logger.exception("LLM chat error")
         return jsonify({"code": 500, "error": "LLM service error"}), 500

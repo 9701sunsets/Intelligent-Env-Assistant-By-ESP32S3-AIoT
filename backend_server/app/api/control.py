@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.exceptions import BadRequest
+import time
 
 # 这个模块定义了控制命令的HTTP接口，接收来自前端的控制请求，并通过MQTT客户端发布到设备
 bp = Blueprint('control', __name__, url_prefix='/api')
@@ -45,7 +46,14 @@ def send_control():
     if target is None or action is None:
         return jsonify({"code": 400, "error": "missing `target` or `action`"}), 400
 
-    ok = mqtt_client.publish_control(device_id=device_id, target=target, action=action) # 将控制命令发布到MQTT服务器，mqtt_client负责将其转发给设备
+    payload = {
+        "msg_id": f"ctrl_{int(time.time()*1000)}",  # 生成唯一消息ID
+        "device_id": device_id,
+        "target": target,
+        "action": action,
+        "timestamp": int(time.time())
+    }
+    ok = mqtt_client.publish_control(payload) # 将控制命令发布到MQTT服务器，mqtt_client负责将其转发给设备
     if ok:
         return jsonify({"code": 200, "message": "Control command sent successfully"}), 200
     else:

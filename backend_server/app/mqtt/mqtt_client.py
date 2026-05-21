@@ -23,7 +23,7 @@ ESP设备通过MQTT上传数据和状态，订阅控制命令。
 '''
 class MQTTClient:
     def __init__(self, broker='localhost', port=1883, client_id=None,
-                 on_upload=None, on_status=None):
+                 on_upload=None, on_status=None, flask_app=None):
         self.broker = broker
         self.port = port
         self.client = mqtt.Client(client_id=client_id)
@@ -31,6 +31,7 @@ class MQTTClient:
         self.client.on_message = self._on_message
         self.on_upload = on_upload
         self.on_status = on_status
+        self.flask_app = flask_app
         self._connected = threading.Event()
 
     def start(self):
@@ -81,7 +82,12 @@ class MQTTClient:
         logger.info("Received device upload: %s", data)
         if callable(self.on_upload):
             try:
-                self.on_upload(data)
+                if self.flask_app:
+                    # 在Flask应用上下文中调用处理函数，确保数据库会话等资源可用
+                    with self.flask_app.app_context():
+                        self.on_upload(data)
+                else:
+                    self.on_upload(data)
             except Exception:
                 logger.exception("on_upload handler error")
 
@@ -93,7 +99,12 @@ class MQTTClient:
         logger.info("Received device status: %s", data)
         if callable(self.on_status):
             try:
-                self.on_status(data)
+                if self.flask_app:
+                    # 在Flask应用上下文中调用处理函数，确保数据库会话等资源可用
+                    with self.flask_app.app_context():
+                        self.on_status(data)
+                else:
+                    self.on_status(data)
             except Exception:
                 logger.exception("on_status handler error")
 

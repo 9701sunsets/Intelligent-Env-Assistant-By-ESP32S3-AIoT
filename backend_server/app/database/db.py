@@ -2,10 +2,7 @@ from sqlalchemy import create_engine, Column, BigInteger, Integer, Float, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-from app.database.model import SensorData, DeviceInfo
-
-Base = declarative_base()
-
+from app.database.model import SensorData, DeviceInfo, Base
 
 def init_db(database_uri):
     '''初始化数据库连接，创建表结构'''
@@ -54,12 +51,29 @@ def save_device_info(session, payload):
     else:
         ts_dt = datetime.utcnow()
 
-    row = DeviceInfo(
-        device_id = payload.get("device_id") or payload.get("dev") or "unknown",
-        firmware_version = payload.get("firmware_version"),
-        status = payload.get("status"),
-        last_seen = ts_dt
-    )
-    session.add(row)
-    session.commit()
-    return row.id
+    device_id = payload.get("device_id") or payload.get("dev") or "unknown"
+    firmware_version = payload.get("firmware_version")
+    status = payload.get("status")
+
+    try:
+        existing = session.get(DeviceInfo, device_id)
+        if existing:
+            existing.firmware_version = firmware_version
+            existing.status = status
+            existing.last_seen = ts_dt
+            session.add(existing)
+            session.commit()
+            return existing.device_id
+        else:
+            row = DeviceInfo(
+                device_id=device_id,
+                firmware_version=firmware_version,
+                status=status,
+                last_seen=ts_dt
+            )
+            session.add(row)
+            session.commit()
+            return row.device_id
+    except Exception:
+        session.rollback()
+        raise

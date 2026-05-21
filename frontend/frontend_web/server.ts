@@ -45,6 +45,28 @@ const historicalReadings: { [key: string]: Array<{ temperature: number; humidity
 // Generate historical mock data
 const initHistory = () => {
   const now = Date.now();
+  const base001 = currentReadings.esp32_001;
+  const base002 = currentReadings.esp32_002;
+
+  for (let i = 24; i >= 0; i--) {
+    const time = new Date(now - i * 10 * 60 * 1000).toISOString();
+
+    historicalReadings.esp32_001.push({
+      temperature: base001.temperature,
+      humidity: base001.humidity,
+      light: base001.light,
+      timestamp: time
+    });
+
+    historicalReadings.esp32_002.push({
+      temperature: base002.temperature,
+      humidity: base002.humidity,
+      light: base002.light,
+      timestamp: time
+    });
+  }
+  /* 功能已屏蔽：前端本地模拟历史数据生成逻辑，改为后端在接收到设备上传数据时动态记录并存储历史数据
+  const now = Date.now();
   for (let i = 24; i >= 0; i--) {
     const time = new Date(now - i * 10 * 60 * 1000).toISOString();
     // Bedroom or living room curves
@@ -60,10 +82,11 @@ const initHistory = () => {
       light: Math.floor(120 + Math.sin(i / 4) * 50 + Math.random() * 20),
       timestamp: time
     });
-  }
+  }*/
 };
 initHistory();
 
+/* 已屏蔽：前端本地模拟数据更新逻辑，改为后端动态更新以更真实地反映设备状态变化，并通过WebSocket实时推送给前端，提升整体系统的交互性和响应速度
 // Dynamic update loop to make dashboard feel alive
 setInterval(() => {
   // Simulate active device changes (esp32_001)
@@ -102,6 +125,7 @@ setInterval(() => {
   // Broadcast to WebSockets
   broadcastSensorUpdate();
 }, 4000);
+*/
 
 // Helper for comfort level
 const calculateComfort = (temp: number, hum: number): "comfortable" | "uncomfortable" | "alert" => {

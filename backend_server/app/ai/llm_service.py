@@ -1,21 +1,24 @@
 import os
 import json
 import requests
+import logging
 try:
     import openai
 except ImportError:
     openai = None
 
+logger = logging.getLogger(__name__)
+
 class LLMService:
     """
-    简单封装：优先使用 OpenAI（通过 OPENAI_API_KEY），否则使用规则引擎回退。
+    封装与语言模型交互的逻辑，提供统一接口
     generate_advice(data) -> {"advice": str, "level": "ok"|"warning"|"critical"}
     """
     def __init__(self, openai_model="gpt-3.5-turbo", deepseek_endpoint=None, deepseek_key=None):
         self.model = openai_model
         self.api_key = os.environ.get("OPENAI_API_KEY")
         # DeepSeek 配置：优先从构造参数，再从环境变量读取
-        self.deepseek_endpoint = deepseek_endpoint or os.environ.get("DEEPSEEK_ENDPOINT", "https://api.deepseek.example/v1/infer")
+        self.deepseek_endpoint = deepseek_endpoint or os.environ.get("DEEPSEEK_ENDPOINT", "https://api.deepseek.com")
         self.deepseek_key = deepseek_key or os.environ.get("DEEPSEEK_API_KEY")
         if self.api_key and openai:
             openai.api_key = self.api_key
@@ -26,37 +29,42 @@ class LLMService:
         返回 dict: {"advice": "...", "level": "..."}
         """
         # 若配置了 deepseek key，优先调用 DeepSeek
+        logger.info("generate_advice: deepseek_key=%s", bool(self.deepseek_key))
         if self.deepseek_key:
             try:
                 ds = self._call_deepseek(data)
                 if isinstance(ds, dict) and "advice" in ds and "level" in ds:
                     return ds
-            except Exception:
+            except Exception as e:
                 # 出错则回退到 OpenAI 或规则引擎
-                pass
+                logger.error("Error occurred while calling DeepSeek: %s", e)
+        logger.info("generate_advice: deepseek_key=%s", bool(self.deepseek_key))
 
         # 之后尝试 OpenAI（原有逻辑）
         if self.api_key and openai:
             try:
                 # ... existing openai call code ...
                 pass
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error("Error occurred while calling OpenAI: %s", e)
 
         return self._rule_engine_advice(data)
 
     def _rule_engine_advice(self, d):
         try:
             t = float(d.get("temperature", 0))
-        except Exception:
+        except Exception as e:
+            logger.error("Error occurred while parsing temperature value: %s", e)
             t = 0.0
         try:
             h = float(d.get("humidity", 0))
-        except Exception:
+        except Exception as e:
+            logger.error("Error occurred while parsing humidity value: %s", e)
             h = 0.0
         try:
             l = float(d.get("light", 0))
-        except Exception:
+        except Exception as e:
+            logger.error("Error occurred while parsing light value: %s", e)
             l = 0.0
 
         # 简单阈值策略（可按需调整）
@@ -70,35 +78,70 @@ class LLMService:
     
     def _call_deepseek(self, data):
         """
-        向 DeepSeek API 发起请求，期望返回 JSON 包含 "advice" 和 "level" 字段。
-        data: dict 包含 device_id, temperature, humidity, light
-        返回: dict {"advice": str, "level": "ok"|"warning"|"critical"}
+        使用 DeepSeek 的 OpenAI-compatible SDK 调用 chat completion。
+        要求：安装 openai 包 (pip install openai)，并确保 self.deepseek_endpoint 为 base_url（如 "https://api.deepseek.com"）。
+        返回 dict {"advice": str, "level": "ok"|"warning"|"critical"}
         """
-        headers = {
-            "Authorization": f"Bearer {self.deepseek_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
-        payload = {
-            "input": {
-                "device_id": data.get("device_id"),
-                "temperature": data.get("temperature"),
-                "humidity": data.get("humidity"),
-                "light": data.get("light")
-            },
-            # 根据 DeepSeek API 要求可加入更多参数，比如模型名、response format 等
-            "output_format": {"type": "json", "schema": {"advice": "string", "level": "string"}}
-        }
-        resp = requests.post(self.deepseek_endpoint, headers=headers, json=payload, timeout=10)
-        resp.raise_for_status()
-        j = resp.json()
-        # 根据 DeepSeek 的实际返回结构适配解析，例如结果可能在 j["result"] 或 j["data"]
-        # 这里示例按可能的结构解析
-        if "result" in j and isinstance(j["result"], dict):
-            return {"advice": j["result"].get("advice", ""), "level": j["result"].get("level", "ok")}
-        if "data" in j and isinstance(j["data"], dict):
-            return {"advice": j["data"].get("advice", ""), "level": j["data"].get("level", "ok")}
-        # 若直接返回目标结构
-        if "advice" in j and "level" in j:
-            return {"advice": j["advice"], "level": j["level"]}
-        raise ValueError("unexpected deepseek response format")
+        # 准备消息：要求模型严格返回 JSON 结构，便于解析
+        system_msg = (
+            "You are an expert IoT Environmental Analyst. Given sensor readings, "
+            "return a JSON object with keys: 'advice' (short Chinese advice) and 'level' ('ok'|'warning'|'critical')."
+            " Do not output any extra text."
+        )
+        user_msg = json.dumps({
+            "device_id": data.get("device_id"),
+            "temperature": data.get("temperature"),
+            "humidity": data.get("humidity"),
+            "light": data.get("light")
+        }, ensure_ascii=False)
+
+        messages = [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": f"Sensor data: {user_msg}\nRespond with JSON only."}
+        ]
+
+        # 首选使用 OpenAI-compatible SDK provided by openai package (class OpenAI)
+        try:
+            from openai import OpenAI
+        except Exception as e:
+            raise RuntimeError("OpenAI SDK not installed. Install with: pip install openai") from e
+
+        base_url = (self.deepseek_endpoint or "").rstrip('/')
+        if base_url.endswith("/v1"):
+            base_url = base_url.rstrip("/v1").rstrip('/')
+
+        client = OpenAI(api_key=self.deepseek_key, base_url=base_url)
+
+        # model name per DeepSeek sample
+        model_name = "deepseek-v4-pro"
+
+        try:
+            resp = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                stream=False,
+                reasoning_effort="high",
+                extra_body={"thinking": {"type": "enabled"}}
+            )
+            # DeepSeek SDK response: response.choices[0].message.content (string)
+            text = ""
+            try:
+                text = resp.choices[0].message.content
+            except Exception:
+                # fallback: try attribute access
+                text = getattr(resp.choices[0], "message", {}).get("content", "") if resp.choices else ""
+
+            logger.info("DeepSeek SDK reply (truncated): %s", (text or "")[:1000])
+
+            # 忽略多余输出，尝试解析为 JSON
+            try:
+                parsed = json.loads(text)
+                advice = parsed.get("advice", "")
+                level = parsed.get("level", "ok")
+                return {"advice": advice, "level": level}
+            except Exception:
+                # 如果不是 JSON，作为 freeform 文本处理，返回为 advice
+                return {"advice": (text or "").strip(), "level": "ok"}
+        except Exception as e:
+            logger.exception("DeepSeek SDK request failed")
+            raise
