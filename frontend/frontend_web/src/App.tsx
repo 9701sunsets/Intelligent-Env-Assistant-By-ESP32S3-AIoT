@@ -61,7 +61,14 @@ export default function App() {
 
   // Auto-scroll chat window
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // if (!chatEndRef.current) return;
+    // if (chatMessages.length === 0) return;
+
+    // const last = chatMessages[chatMessages.length - 1];
+    // // 只有当最后一条消息是 AI 的，或正在等待 AI 返回（chatLoading），才自动滚动
+    // if (last.sender === "ai" || chatLoading) {
+    //   chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    // }
   }, [chatMessages, chatLoading]);
 
   // Append customized messages to our terminal simulation log on the board card

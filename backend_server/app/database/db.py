@@ -4,6 +4,8 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timezone
 from app.database.model import SensorData, DeviceInfo, Base
 
+ADC_TO_LUX = 411800
+
 def _normalize_timestamp(ts):
     """返回 UTC 的 datetime；若 DB 需要 naive UTC，可调用 .replace(tzinfo=None) 再存。"""
     if ts is None:
@@ -63,7 +65,7 @@ def save_sensor_data(session, payload):
         device_id = payload.get("device_id") or payload.get("dev") or "unknown",
         temperature = temp,
         humidity = hum,
-        light = payload.get("light"),
+        light = ADC_TO_LUX // payload.get("light"),
         comfort = payload.get("comfort"),
         timestamp = ts_dt
     )
