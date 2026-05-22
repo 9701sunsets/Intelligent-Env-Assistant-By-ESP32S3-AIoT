@@ -77,11 +77,44 @@ def ai_chat():
     if not llm_service:
         return jsonify({"code": 500, "error": "LLM service not configured"}), 500
 
+    # 尝试获取该设备最新的传感器数据
+    temperature = humidity = light = None
+    SessionLocal = current_app.config.get('DATABASE_SESSION')
     try:
-        result = llm_service.generate_advice({
-            "device_id": device_id,
-            "question": question
-        })
+        if SessionLocal:
+            session = SessionLocal()
+            try:
+                from app.database.model import SensorData
+                from sqlalchemy import desc
+                row = session.query(SensorData).filter(SensorData.device_id == device_id).order_by(desc(SensorData.timestamp)).first()
+                if row:
+                    temperature = row.temperature
+                    humidity = row.humidity
+                    light = row.light
+            finally:
+                session.close()
+    except Exception:
+        # 忽略 DB 查询错误，使用回退
+        current_app.logger.exception("Failed to load latest sensor data from DB")
+
+    if temperature is None or humidity is None or light is None:
+        latest = current_app.config.get("LATEST_UPLOADS", {})
+        entry = latest.get(device_id) or {}
+        data = entry.get("data", {})
+        temperature = temperature if temperature is not None else data.get("temperature")
+        humidity = humidity if humidity is not None else data.get("humidity")
+        light = light if light is not None else data.get("light")
+
+    # 构建传入 LLM 的 payload（包含 question 与可用的传感器上下文）
+    payload = {
+        "device_id": device_id,
+        "question": question,
+        "temperature": temperature,
+        "humidity": humidity,
+        "light": light
+    }
+    try:
+        result = llm_service.generate_advice(payload)
         
         # 处理多种可能的返回结构，确保前端收到 data.answer 字段
         if isinstance(result, dict):

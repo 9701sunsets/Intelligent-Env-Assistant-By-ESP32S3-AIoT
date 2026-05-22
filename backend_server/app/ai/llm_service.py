@@ -2,6 +2,7 @@ import os
 import json
 import requests
 import logging
+import math
 try:
     import openai
 except ImportError:
@@ -28,13 +29,30 @@ class LLMService:
         data: dict with keys device_id, temperature, humidity, light
         返回 dict: {"advice": "...", "level": "..."}
         """
+
+        def _is_valid_number(v):
+            try:
+                f = float(v)
+                return math.isfinite(f)
+            except Exception:
+                return False
+
+        is_chat = "question" in data and data.get("question")
+        if not is_chat:
+            if not (_is_valid_number(data.get("temperature")) and _is_valid_number(data.get("humidity")) and _is_valid_number(data.get("light"))):
+                logger.warning("Invalid sensor inputs for device %s: %s", data.get("device_id"), data)
+                return {"advice": "传感器数据缺失，请检查设备连接。", "level": "critical"}
+
         # 若配置了 deepseek key，优先调用 DeepSeek
         logger.info("generate_advice: deepseek_key=%s", bool(self.deepseek_key))
         if self.deepseek_key:
             try:
-                ds = self._call_deepseek(data)
-                if isinstance(ds, dict) and "advice" in ds and "level" in ds:
-                    return ds
+                ds = self._call_deepseek(data, mode="chat" if is_chat else "advice")
+                if isinstance(ds, dict):
+                    if is_chat and ds.get("answer"):
+                        return ds
+                    if ds.get("advice") and ds.get("level"):
+                        return ds
             except Exception as e:
                 # 出错则回退到 OpenAI 或规则引擎
                 logger.error("Error occurred while calling DeepSeek: %s", e)
@@ -76,31 +94,13 @@ class LLMService:
             return {"advice": "室内偏热潮，建议检查通风或降低温度。", "level": "warning"}
         return {"advice": "环境良好，无需特别操作。", "level": "ok"}
     
-    def _call_deepseek(self, data):
+    def _call_deepseek(self, data, mode="advice"):
         """
         使用 DeepSeek 的 OpenAI-compatible SDK 调用 chat completion。
         要求：安装 openai 包 (pip install openai)，并确保 self.deepseek_endpoint 为 base_url（如 "https://api.deepseek.com"）。
         返回 dict {"advice": str, "level": "ok"|"warning"|"critical"}
         """
-        # 准备消息：要求模型严格返回 JSON 结构，便于解析
-        system_msg = (
-            "You are an expert IoT Environmental Analyst. Given sensor readings, "
-            "return a JSON object with keys: 'advice' (short Chinese advice) and 'level' ('ok'|'warning'|'critical')."
-            " Do not output any extra text."
-        )
-        user_msg = json.dumps({
-            "device_id": data.get("device_id"),
-            "temperature": data.get("temperature"),
-            "humidity": data.get("humidity"),
-            "light": data.get("light")
-        }, ensure_ascii=False)
 
-        messages = [
-            {"role": "system", "content": system_msg},
-            {"role": "user", "content": f"Sensor data: {user_msg}\nRespond with JSON only."}
-        ]
-
-        # 首选使用 OpenAI-compatible SDK provided by openai package (class OpenAI)
         try:
             from openai import OpenAI
         except Exception as e:
@@ -111,10 +111,45 @@ class LLMService:
             base_url = base_url.rstrip("/v1").rstrip('/')
 
         client = OpenAI(api_key=self.deepseek_key, base_url=base_url)
-
-        # model name per DeepSeek sample
         model_name = "deepseek-v4-pro"
 
+        # 构造消息
+        if mode == "chat":
+            system_msg = (
+                "你是一名专业的物联网环境陪伴助手，使用中文回答用户问题。"
+                "给定传感器读数与用户提问，返回严格的 JSON：{\"answer\": \"...\"}，不要输出其它内容。"
+            )
+            user_payload = {
+                "device_id": data.get("device_id"),
+                "temperature": data.get("temperature"),
+                "humidity": data.get("humidity"),
+                "light": data.get("light"),
+                "question": data.get("question")
+            }
+            user_msg = json.dumps(user_payload, ensure_ascii=False)
+            messages = [
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": f"Sensor+Question: {user_msg}\nRespond with JSON only."}
+            ]
+        else:
+            # 以前的 advice 模式（保持原有 prompt）
+            system_msg = (
+                "你是一名专业的物联网环境分析师，根据传感器读数，"
+                "return a JSON object {\"advice\": str, \"level\": \"ok\"|\"warning\"|\"critical\"}."
+                " Do not output any extra text."
+            )
+            user_msg = json.dumps({
+                "device_id": data.get("device_id"),
+                "temperature": data.get("temperature"),
+                "humidity": data.get("humidity"),
+                "light": data.get("light")
+            }, ensure_ascii=False)
+            messages = [
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": f"Sensor data: {user_msg}\nRespond with JSON only."}
+            ]
+
+        text = ""
         try:
             resp = client.chat.completions.create(
                 model=model_name,
@@ -123,25 +158,55 @@ class LLMService:
                 reasoning_effort="high",
                 extra_body={"thinking": {"type": "enabled"}}
             )
-            # DeepSeek SDK response: response.choices[0].message.content (string)
-            text = ""
+            # Safe extraction of response text
             try:
                 text = resp.choices[0].message.content
             except Exception:
-                # fallback: try attribute access
-                text = getattr(resp.choices[0], "message", {}).get("content", "") if resp.choices else ""
-
-            logger.info("DeepSeek SDK reply (truncated): %s", (text or "")[:1000])
-
-            # 忽略多余输出，尝试解析为 JSON
-            try:
-                parsed = json.loads(text)
-                advice = parsed.get("advice", "")
-                level = parsed.get("level", "ok")
-                return {"advice": advice, "level": level}
-            except Exception:
-                # 如果不是 JSON，作为 freeform 文本处理，返回为 advice
-                return {"advice": (text or "").strip(), "level": "ok"}
-        except Exception as e:
+                # fallback for different response shapes
+                try:
+                    choice0 = resp.choices[0] if resp.choices else None
+                    msg = getattr(choice0, "message", None) or (choice0.get("message") if isinstance(choice0, dict) else None)
+                    if isinstance(msg, dict):
+                        text = msg.get("content", "") or ""
+                    else:
+                        text = str(msg or "")
+                except Exception:
+                    text = ""
+        except Exception:
             logger.exception("DeepSeek SDK request failed")
             raise
+
+        text = (text or "").strip()
+        logger.info("DeepSeek SDK reply (truncated): %s", text[:1000])
+
+        # 尝试解析 JSON；若失败尝试抽取 {...} 子串
+        parsed = None
+        try:
+            parsed = json.loads(text)
+        except Exception:
+            start = text.find('{')
+            end = text.rfind('}')
+            if start != -1 and end != -1 and end > start:
+                try:
+                    parsed = json.loads(text[start:end+1])
+                except Exception:
+                    parsed = None
+
+        if isinstance(parsed, dict):
+            if mode == "chat" and parsed.get("answer"):
+                return {"answer": parsed.get("answer", "").strip()}
+            if parsed.get("advice") and parsed.get("level"):
+                return {"advice": parsed.get("advice", "").strip(), "level": parsed.get("level", "ok")}
+
+        # plain text handling: 根据关键词提升严重等级
+        lower = text.lower()
+        critical_keywords = ["缺失", "异常", "请检查设备", "sensor error", "no data"]
+        if any(k in lower for k in critical_keywords):
+            if mode == "chat":
+                return {"answer": text, "level": "critical"}
+            return {"advice": text, "level": "critical"}
+
+        # 兜底返回
+        if mode == "chat":
+            return {"answer": text, "level": "ok"}
+        return {"advice": text, "level": "ok"}

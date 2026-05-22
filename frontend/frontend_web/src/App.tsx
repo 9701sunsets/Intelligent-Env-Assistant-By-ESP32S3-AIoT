@@ -116,7 +116,7 @@ export default function App() {
   const generateNewAIAdvice = async () => {
     if (!latestData) return;
     setAdviceLoading(true);
-    addConsoleLog("Requesting premium Gemini analysis on current parameters...");
+    addConsoleLog("Requesting premium Deepseek analysis on current parameters...");
     try {
       const res = await fetch(`${API_BASE}/api/ai/advice`, {
         method: "POST",
@@ -131,11 +131,11 @@ export default function App() {
       const json = await res.json();
       if (json.code === 200) {
         setAiAdvice(json.data);
-        addConsoleLog("Gemini smart environmental advice parsed successfully!");
+        addConsoleLog("Deepseek smart environmental advice parsed successfully!");
       }
     } catch (err) {
       console.error("Failed to fetch advice:", err);
-      addConsoleLog("Connect failure for Gemini cloud advice: using fallback analyzer rules");
+      addConsoleLog("Connect failure for Deepseek cloud advice: using fallback analyzer rules");
     } finally {
       setAdviceLoading(false);
     }
@@ -745,10 +745,10 @@ export default function App() {
 
         </div>
 
-        {/* Right Column - 4 cols width: Gemini Advisor module, and AI bot message canvas */}
+        {/* Right Column - 4 cols width: Deepseek Advisor module, and AI bot message canvas */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           
-          {/* 6. Gemini Core Advisor Box */}
+          {/* 6. Deepseek Core Advisor Box */}
           <div className="bg-gradient-to-br from-[#FCFAF7] to-[#FAF3E8] border border-[#E8DFC8] rounded-3xl p-6 shadow-[0_4px_24px_rgba(215,200,185,0.06)] relative overflow-hidden">
             
             {/* Background ambient lighting */}
@@ -761,7 +761,7 @@ export default function App() {
                 </span>
                 <div>
                   <h3 className="text-[#322013] font-bold text-sm tracking-tight leading-none">云端大模型综合调控</h3>
-                  <span className="text-[9px] text-[#A67C52] font-mono tracking-widest block uppercase mt-0.5">Gemini Diagnostic</span>
+                  <span className="text-[9px] text-[#A67C52] font-mono tracking-widest block uppercase mt-0.5">Deepseek Diagnostic</span>
                 </div>
               </div>
 
@@ -782,7 +782,7 @@ export default function App() {
                   <div className="relative w-10 h-10">
                     <div className="absolute inset-0 border-2 border-amber-200 border-t-[#B26B1E] rounded-full animate-spin"></div>
                   </div>
-                  <span className="text-xs text-stone-500 font-mono mt-3">Gemini 3.5 实时空气分析中...</span>
+                  <span className="text-xs text-stone-500 font-mono mt-3">Deepseek-v4 实时空气分析中...</span>
                 </div>
               ) : aiAdvice ? (
                 <div className="flex flex-col gap-3">
@@ -847,7 +847,7 @@ export default function App() {
                 onClick={() => triggerAIChat("当前适合睡觉吗？")}
                 className="text-[10px] bg-stone-50 border border-[#ECE0D1] hover:border-amber-500 transition-colors px-2.5 py-1.5 rounded-lg text-stone-600 font-medium active:scale-95"
               >
-                睡觉适宜度吗？
+                适合睡觉吗？
               </button>
               <button
                 onClick={() => triggerAIChat("现在房间光照看书合适吗？")}
