@@ -1,3 +1,12 @@
+# normalize IDF_PATH to forward-slash form for Windows
+if(DEFINED ENV{IDF_PATH})
+    file(TO_CMAKE_PATH "$ENV{IDF_PATH}" IDF_PATH_CMAKE)
+else()
+    set(IDF_PATH_CMAKE "")
+endif()
+
+set(MBEDTLS_PRIVATE_INCLUDE "${IDF_PATH_CMAKE}/components/mbedtls/mbedtls/tf-psa-crypto/drivers/builtin/include")
+
 idf_component_register(
     SRCS 
         "main.c" 
@@ -9,6 +18,7 @@ idf_component_register(
         "cloud/mqtt_clients.c"
         "utils/json_parser.c"
         "ai/comfort_ai.c"
+        "ota/ota_update.c"
 
     PRIV_REQUIRES 
         spi_flash
@@ -22,5 +32,11 @@ idf_component_register(
         cjson
         esp_http_server
         esp_http_client
-    INCLUDE_DIRS "."
+        esp_https_ota
+        bootloader_support
+        mbedtls
+        app_update
+    INCLUDE_DIRS
+        "."
+        "${MBEDTLS_PRIVATE_INCLUDE}"
 )

@@ -18,6 +18,7 @@
 #include "sensor/dht11.h"
 #include "ui/led_control.h"
 #include "cloud/mqtt_clients.h"
+#include "ota/ota_update.h"
 
 extern void mqtt_main_task(void *arg);
 
@@ -47,6 +48,8 @@ void app_main(void)
     esp_log_level_set("wifi", ESP_LOG_DEBUG); // 设置 Wi-Fi 管理器模块的日志级别为 DEBUG
     esp_log_level_set("wifi_manager", ESP_LOG_DEBUG); // 设置 Wi-Fi 管理器模块的日志级别为 DEBUG
     wifi_manager_auto_connect_or_start_softap(20000); // 尝试自动连接 Wi-Fi，超时后启动 SoftAP 模式
+
+    //trigger_ota_once();
 
     // 创建 MQTT 客户端任务
     xTaskCreate(mqtt_main_task, "mqtt_main_task", 8192, NULL, 5, NULL);
