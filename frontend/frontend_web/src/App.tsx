@@ -671,7 +671,7 @@ export default function App() {
               <div className="md:col-span-7 flex flex-col gap-5">
                 
                 {/* Terminal simulation log */}
-                <div className="bg-[#1C1814] border border-stone-800 rounded-2xl p-4 shadow-inner">
+                <div className="bg-[#1C1814] border border-stone-800 rounded-2xl p-4 shadow-inner flex-1 flex flex-col">
                   <div className="font-mono text-[10px] text-stone-400 pb-2 border-b border-stone-800 flex items-center justify-between">
                     <span className="flex items-center gap-1.5 text-[#B26B1E]">
                       <span className="w-1.5 h-1.5 bg-[#B26B1E] rounded-full animate-ping"></span>
@@ -681,7 +681,7 @@ export default function App() {
                   </div>
 
                   {/* Print log details */}
-                  <div className="mt-3 flex flex-col gap-1.5 h-28 overflow-y-auto pr-1">
+                  <div className="mt-3 flex-1 flex flex-col gap-1.5 overflow-y-auto pr-1">
                     {activeConsoleLog.map((log, idx) => (
                       <div key={idx} className="font-mono text-[9px] leading-tight text-white/70">
                         {log}
@@ -694,9 +694,9 @@ export default function App() {
                 </div>
 
                 {/* Toggles controllers grid */}
-                <div className="grid grid-cols-3 gap-3">
+                {/* <div className="grid grid-cols-3 gap-3">
                   
-                  {/* LED Button */}
+                  LED Button
                   <button
                     onClick={() => toggleHardwareRelay("led", activeState.led)}
                     className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 ${
@@ -710,7 +710,7 @@ export default function App() {
                     <span className="text-[9px] font-mono mt-1 opacity-75">{activeState.led === "on" ? "开启" : "关闭"}</span>
                   </button>
 
-                  {/* Fan Button */}
+                  Fan Button
                   <button
                     onClick={() => toggleHardwareRelay("fan", activeState.fan)}
                     className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 ${
@@ -724,7 +724,7 @@ export default function App() {
                     <span className="text-[9px] font-mono mt-1 opacity-75">{activeState.fan === "on" ? "转动中" : "静止"}</span>
                   </button>
 
-                  {/* Buzzer Button */}
+                  Buzzer Button
                   <button
                     onClick={() => toggleHardwareRelay("buzzer", activeState.buzzer)}
                     className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border text-center transition-all duration-300 ${
@@ -738,7 +738,7 @@ export default function App() {
                     <span className="text-[9px] font-mono mt-1 opacity-75">{activeState.buzzer === "on" ? "警报中" : "静音"}</span>
                   </button>
 
-                </div>
+                </div> */}
 
               </div>
             </div>
