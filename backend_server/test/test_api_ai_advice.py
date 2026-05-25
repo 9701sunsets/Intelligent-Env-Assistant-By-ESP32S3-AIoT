@@ -1,4 +1,3 @@
-# TODO: 测试真实API-KEY配置下的LLM服务调用，覆盖OpenAI和DeepSeek两种情况，并测试成功场景
 import json
 import pytest
 from flask import Flask

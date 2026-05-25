@@ -1,6 +1,3 @@
-# TODO: 添加异常情况测试：无效JSON、缺少字段、非dict载荷、publish返回失败
-# TODO: 增加集成测试，启动实际MQTT客户端，连接到测试Broker，发送消息验证处理逻辑（本地mosquitto或在线测试Broker）
-# TODO: 把测试纳入CI流程，确保每次提交都运行测试
 import json
 
 import sys, types

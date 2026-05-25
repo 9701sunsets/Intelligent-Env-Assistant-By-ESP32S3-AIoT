@@ -4,7 +4,7 @@
 #include "esp_err.h"
 #include "cJSON.h"
 
-// 初始化 MQTT：按主机/端口/设备 id 初始化（适配 mqtt 客户端实现）
+// 初始化 MQTT：按主机/端口/设备 id 初始化
 esp_err_t mqtt_client_init_with_broker(const char *broker_host, int broker_port, const char *device_id);
 
 esp_err_t mqtt_client_init(const char *broker_uri, const char *device_id);

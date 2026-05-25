@@ -44,12 +44,11 @@ def upload_firmware():
 
 @app.route('/get_firmware_for_device', methods=['GET'])
 def get_firmware_for_device():
-    # 生产环境你应做设备鉴权并根据设备型号返回对应 object
+    # 生产环境设备鉴权并根据设备型号返回对应 object
     object_name = request.args.get('object')
     expire = int(request.args.get('expire', 600))
     signed_url = bucket.sign_url('GET', object_name, expire)
     # 可从 OSS 或本地维护一个 manifest 存储版本/sha256等
-    # 这里简化返回
     return jsonify({"url": signed_url, "expire": expire})
 
 if __name__ == '__main__':

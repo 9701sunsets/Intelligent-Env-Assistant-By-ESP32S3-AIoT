@@ -208,7 +208,6 @@ void wifi_manager_start_softap(void)
     // 只设置模式和配置，启动由外层控制（配合 HTTP server）
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
 
-    // TODO 参数封装
     wifi_config_t wifi_config = {
         .ap = {
             .ssid = "ESP_SoftAP",
@@ -326,7 +325,7 @@ static esp_err_t http_post_config(httpd_req_t *req)
 
         httpd_resp_sendstr(req, "OK, saved. Device will connect.");
 
-        // 在独立任务中应用配置（你已有 wifi_apply_config_task）
+        // 在独立任务中应用配置
         wifi_config_t *task_arg = malloc(sizeof(wifi_config_t));
         if (task_arg) {
             *task_arg = wifi_cfg;
@@ -344,7 +343,7 @@ static esp_err_t http_post_config(httpd_req_t *req)
 
 void wifi_manager_start_softap_http(void)
 {
-    // 启 SoftAP（复用已有 start_softap 实现或稍改）
+    // 启 SoftAP
     wifi_manager_start_softap();
 
     // 启动 http server
@@ -375,7 +374,7 @@ void wifi_manager_stop_softap_http(void)
         s_http_server = NULL;
     }
     // 停止 AP 模式：设为 NULL 或切换到 OFF，再由 STA 模式覆盖
-    // 这里只做最小处理：esp_wifi_stop() 可以在切换前调用（视情况而定）
+    // 这里只做最小处理
     ESP_ERROR_CHECK(esp_wifi_stop());
 }
 
@@ -389,7 +388,7 @@ esp_err_t wifi_manager_auto_connect_or_start_softap(uint32_t timeout_ms)
         ESP_ERROR_CHECK(esp_wifi_start());
         esp_wifi_connect();
 
-        // 等待连接事件（简化：用事件组 BIT0 在 wifi_event_handler 里设置）
+        // 等待连接事件
         EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group, BIT0, pdFALSE, pdFALSE, pdMS_TO_TICKS(timeout_ms));
         if (bits & BIT0) {
             ESP_LOGI(TAG, "Auto connect success");

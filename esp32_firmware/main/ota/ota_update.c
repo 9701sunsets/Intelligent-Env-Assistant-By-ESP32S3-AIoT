@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-/* 在包含私有头之前定义以导出私有原型 */
 #define MBEDTLS_DECLARE_PRIVATE_IDENTIFIERS
 #include "mbedtls/private/sha256.h"
 
@@ -18,8 +17,8 @@ static const char *TAG = "ota_oss";
 
 /*
  signed_url: 后端生成的带签名的 OSS URL (https://bucket.oss-cn-xxx.aliyuncs.com/...)
- expected_sha256_hex: 小写 hex string，或 NULL 跳过校验（不推荐）
- server_root_ca_pem: 根证书 PEM 字符串（可为 NULL，但生产应提供）
+ expected_sha256_hex: 小写 hex string，或 NULL 跳过校验
+ server_root_ca_pem: 根证书 PEM 字符串
 */
 
 esp_err_t compute_partition_sha256(const esp_partition_t *partition, char out_hex[65]) {

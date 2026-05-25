@@ -16,8 +16,8 @@
 
 static const char *TAG = "mqtt_task";
 
-static const char *broker_host = "192.168.57.159"; // 替换为实际的 MQTT 代理主机地址
-static const int broker_port = 1883; // 替换为实际的 MQTT 代理端口
+static const char *broker_host = "192.168.57.159";
+static const int broker_port = 1883;
 
 static void initialize_sntp(void)
 {

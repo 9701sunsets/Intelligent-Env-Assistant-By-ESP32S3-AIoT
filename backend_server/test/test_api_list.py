@@ -1,4 +1,3 @@
-# TODO: 增加真实数据库的测试
 import pytest
 from flask import Flask
 from datetime import datetime
@@ -40,5 +39,5 @@ def test_device_list_ok(app):
     d = j["data"]
     assert d[0]["device_id"] == "esp32_001"
     assert d[0]["status"] == "online"
-    # API 目前返回的时间可能带有 "+00:00" 或不带时区，断言前缀更稳健
+    # API 目前返回的时间可能带有 "+00:00" 或不带时区
     assert d[0]["last_seen"].startswith("2026-05-17T14:30:25")
