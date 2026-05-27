@@ -14,6 +14,7 @@ idf_component_register(
         "mqtt_task.c"
         "sensor/light_sensor.c"
         "sensor/dht11.c"
+        "sensor/mq2.c
         "ui/led_control.c"
         "cloud/mqtt_clients.c"
         "utils/json_parser.c"

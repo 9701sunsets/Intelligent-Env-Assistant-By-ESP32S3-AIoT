@@ -10,6 +10,7 @@
 #include "ai/comfort_ai.h"
 #include "sensor/dht11.h"
 #include "sensor/light_sensor.h"
+#include "sensor/mq2.h"
 #include "wifi_manager.h"
 #include <time.h>
 #include <lwip/inet.h>
@@ -54,12 +55,19 @@ void mqtt_main_task(void *arg)
 
     dht11_init(GPIO_NUM_1);
     init_light_sensor();
+    mq2_init();
+    mq2_task_start();
 
     while (1) {
         // 读取传感器数据
         int temp=0, hum=0;
         dht11_read(GPIO_NUM_1, &temp, &hum);
         int light = read_light_raw();
+
+        int mq2_raw = mq2_read_raw();
+        double mq2_v = mq2_read_voltage();
+        double mq2_ppm = mq2_read_ppm();
+        int mq2_alarm = mq2_get_alarm() ? 1 : 0;
 
         // 获取 RSSI
         int wifi_rssi = -127;
@@ -77,7 +85,8 @@ void mqtt_main_task(void *arg)
         ESP_LOGI(TAG, "Sensor reading - Temp=%dC Hum=%d%% Light=%d Comfort=%s RSSI=%ddBm", temp, hum, light, comfort, wifi_rssi);
 
         // 创建并发布
-        cJSON *up = json_create_upload("esp32_001", (double)temp, (double)hum, light, comfort, wifi_rssi, ts);
+        cJSON *up = json_create_upload("esp32_001", (double)temp, (double)hum, light, comfort, wifi_rssi, ts,
+                                      mq2_raw, mq2_v, mq2_ppm, mq2_alarm);
         mqtt_publish_upload_json(up);
         cJSON_Delete(up);
 

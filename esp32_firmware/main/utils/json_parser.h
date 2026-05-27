@@ -5,7 +5,8 @@
 #include <stdint.h>
 
 cJSON *json_create_upload(const char *device_id, double temperature, double humidity,
-                          int light, const char *comfort, int wifi_rssi, const char *timestamp);
+                          int light, const char *comfort, int wifi_rssi, const char *timestamp,
+                          int mq2_adc_raw, double mq2_voltage, double mq2_ppm, int mq2_alarm);
 
 cJSON *json_create_status(const char *device_id, const char *status, const char *ip,
                           const char *firmware_version, uint32_t free_heap, const char *timestamp);

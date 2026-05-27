@@ -19,6 +19,7 @@
 #include "ui/led_control.h"
 #include "cloud/mqtt_clients.h"
 #include "ota/ota_update.h"
+#include "sensor/mq2.h"
 
 extern void mqtt_main_task(void *arg);
 
@@ -53,4 +54,8 @@ void app_main(void)
 
     // 创建 MQTT 客户端任务
     xTaskCreate(mqtt_main_task, "mqtt_main_task", 8192, NULL, 5, NULL);
+
+    // 初始化 MQ2 传感器
+    mq2_init();
+    mq2_task_start();
 }
