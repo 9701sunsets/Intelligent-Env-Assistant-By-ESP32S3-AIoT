@@ -1,0 +1,213 @@
+/* ===== 设置页样式 ===== */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 16rpx 8rpx 32rpx;
+}
+
+.page-icon {
+  font-size: 56rpx;
+}
+
+.page-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #2C2419;
+}
+
+.page-subtitle {
+  font-size: 22rpx;
+  color: #9E8E80;
+  margin-top: 4rpx;
+}
+
+/* 设备卡片 */
+.device-card {
+  padding: 28rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #5A4E44;
+  margin-bottom: 24rpx;
+}
+
+.device-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.device-icon {
+  font-size: 64rpx;
+  margin-right: 20rpx;
+}
+
+.device-meta {
+  flex: 1;
+}
+
+.device-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2C2419;
+}
+
+.device-model {
+  font-size: 22rpx;
+  color: #9E8E80;
+  margin-top: 4rpx;
+}
+
+.device-status {
+  display: flex;
+  align-items: center;
+  font-size: 24rpx;
+  color: #9E8E80;
+  gap: 8rpx;
+}
+
+.device-metrics {
+  margin-bottom: 24rpx;
+}
+
+.metric {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.metric-label {
+  font-size: 24rpx;
+  color: #9E8E80;
+  width: 140rpx;
+  flex-shrink: 0;
+}
+
+.metric-bar-bg {
+  flex: 1;
+  height: 16rpx;
+  background: #F0E6D8;
+  border-radius: 8rpx;
+  overflow: hidden;
+  margin-right: 16rpx;
+}
+
+.metric-bar-fill {
+  height: 100%;
+  border-radius: 8rpx;
+  transition: width 0.3s;
+}
+
+.metric-value {
+  font-size: 24rpx;
+  color: #5A4E44;
+  width: 64rpx;
+  text-align: right;
+}
+
+.disconnect-btn {
+  text-align: center;
+  padding: 24rpx;
+  border-radius: 32rpx;
+  font-size: 28rpx;
+  color: #E85D75;
+  background: #FDEDF0;
+  font-weight: 500;
+}
+
+.disconnect-btn:active {
+  opacity: 0.85;
+}
+
+/* 设置卡片 */
+.settings-card {
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+}
+
+.setting-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.setting-icon {
+  font-size: 36rpx;
+}
+
+.setting-name {
+  font-size: 28rpx;
+  color: #2C2419;
+}
+
+.setting-switch {
+  transform: scale(0.85);
+}
+
+.setting-divider {
+  height: 1rpx;
+  background: #F5EFE6;
+}
+
+/* 选项组 */
+.setting-group {
+  padding: 20rpx 0;
+}
+
+.setting-label {
+  font-size: 26rpx;
+  color: #5A4E44;
+  margin-bottom: 16rpx;
+  font-weight: 500;
+}
+
+.option-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.option {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 16rpx;
+  border-radius: 28rpx;
+  font-size: 26rpx;
+  color: #9E8E80;
+  background: #F5EFE6;
+  border: 2rpx solid transparent;
+  transition: all 0.2s;
+}
+
+.option.active {
+  background: #8B5E34;
+  color: #FFFFFF;
+  border-color: #8B5E34;
+}
+
+/* 关于 */
+.about {
+  text-align: center;
+  padding: 48rpx 24rpx;
+  font-size: 26rpx;
+  color: #9E8E80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.about-sub {
+  font-size: 22rpx;
+  color: #B8A99A;
+}

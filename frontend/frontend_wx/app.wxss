@@ -1,0 +1,107 @@
+/** app.wxss - 全局样式 */
+page {
+  font-family: -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #FAF6F0;
+  color: #2C2419;
+  font-size: 28rpx;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container {
+  padding: 24rpx;
+  padding-bottom: 48rpx;
+}
+
+/* 卡片通用样式 */
+.card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 16rpx rgba(139, 94, 52, 0.06);
+}
+
+.card-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2C2419;
+  margin-bottom: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.card-title .icon {
+  font-size: 32rpx;
+}
+
+/* Section标题 */
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #5A4E44;
+  margin-bottom: 20rpx;
+  padding: 0 8rpx;
+}
+
+/* 按钮通用样式 */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 32rpx;
+  border-radius: 32rpx;
+  font-size: 26rpx;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #8B5E34, #A67B5B);
+  color: #FFFFFF;
+}
+
+.btn-primary:active {
+  opacity: 0.85;
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: #F5EFE6;
+  color: #8B5E34;
+}
+
+.btn-secondary:active {
+  background: #EBE0D2;
+}
+
+/* 状态指示点 */
+.status-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8rpx;
+  flex-shrink: 0;
+}
+
+.status-dot.online { background: #7ED321; }
+.status-dot.offline { background: #E85D75; }
+.status-dot.warning { background: #F5A623; }
+
+/* 分割线 */
+.divider {
+  height: 1rpx;
+  background: #F0E6D8;
+  margin: 24rpx 0;
+}
+
+/* Flex工具类 */
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 16rpx; }
+.gap-3 { gap: 24rpx; }

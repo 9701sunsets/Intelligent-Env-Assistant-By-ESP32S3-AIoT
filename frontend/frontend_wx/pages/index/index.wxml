@@ -1,0 +1,171 @@
+<view class="container">
+  <!-- 顶部状态栏 -->
+  <view class="header">
+    <view class="header-left">
+      <text class="header-icon">🌿</text>
+      <view>
+        <view class="header-title">智能环境监测助手</view>
+        <view class="header-subtitle">ESP32-S3 AIoT</view>
+      </view>
+    </view>
+    <view class="header-right">
+      <text class="temp-display">{{sensor.temperature}}°C</text>
+      <text class="update-time">{{lastUpdate}}</text>
+      <view class="connect-status">
+        <view class="status-dot {{connected ? 'online' : 'offline'}}"></view>
+        <text>{{connected ? '已连接' : '未连接'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 综合舒适度卡片 -->
+  <view class="card comfort-card" style="background: {{cBg}}; border-color: {{cColor}};">
+    <view class="comfort-header">
+      <text class="comfort-icon">📊</text>
+      <text class="comfort-title">实时监测</text>
+      <view class="comfort-badge" style="background: {{cColor}};">
+        <view class="status-dot" style="background: {{cDot}};"></view>
+        <text>{{cText}}</text>
+      </view>
+    </view>
+
+    <!-- 三个环形进度 -->
+    <view class="rings-row">
+      <view class="ring-item">
+        <canvas type="2d" id="ring0" class="ring-canvas"></canvas>
+        <view class="ring-labels">
+          <text class="ring-value">{{sensor.temperature}}°C</text>
+          <text class="ring-name">温度</text>
+        </view>
+      </view>
+      <view class="ring-item">
+        <canvas type="2d" id="ring1" class="ring-canvas"></canvas>
+        <view class="ring-labels">
+          <text class="ring-value">{{sensor.humidity}}%</text>
+          <text class="ring-name">湿度</text>
+        </view>
+      </view>
+      <view class="ring-item">
+        <canvas type="2d" id="ring2" class="ring-canvas"></canvas>
+        <view class="ring-labels">
+          <text class="ring-value">{{sensor.light}}</text>
+          <text class="ring-unit">lux</text>
+          <text class="ring-name">光照</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 详细数据行 -->
+  <view class="card detail-card">
+    <view class="detail-row">
+      <view class="detail-icon temp">🌡</view>
+      <view class="detail-info">
+        <text class="detail-name">环境温度</text>
+      </view>
+      <view class="detail-right">
+        <text class="detail-value">°C</text>
+        <view class="detail-status">
+          <view class="status-dot" style="background: {{tDot}};"></view>
+          <text style="color: {{tColor}};">{{tText}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="detail-divider"></view>
+    <view class="detail-row">
+      <view class="detail-icon hum">💧</view>
+      <view class="detail-info">
+        <text class="detail-name">相对湿度</text>
+      </view>
+      <view class="detail-right">
+        <text class="detail-value">%</text>
+        <view class="detail-status">
+          <view class="status-dot" style="background: {{hDot}};"></view>
+          <text style="color: {{hColor}};">{{hText}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="detail-divider"></view>
+    <view class="detail-row">
+      <view class="detail-icon light">☀</view>
+      <view class="detail-info">
+        <text class="detail-name">光照强度</text>
+      </view>
+      <view class="detail-right">
+        <text class="detail-value">lux</text>
+        <view class="detail-status">
+          <view class="status-dot" style="background: {{lDot}};"></view>
+          <text style="color: {{lColor}};">{{lText}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- AI 建议卡片 -->
+  <view class="card advice-card" style="border-left-color: {{aBorder}};">
+    <view class="advice-header">
+      <text>💡 AI 健康建议</text>
+      <view class="advice-badge" style="background: {{aBorder}};">实时</view>
+    </view>
+    <view class="advice-text">{{aText || '正在分析环境数据...'}}</view>
+  </view>
+
+  <!-- 设备控制卡片 -->
+  <view class="card control-card">
+    <view class="control-header">
+      <text>🔌 ESP32-S3 微感知主板</text>
+      <view class="control-status">
+        <view class="status-dot {{connected ? 'online' : 'offline'}}"></view>
+        <text>{{connected ? '在线' : '离线'}}</text>
+      </view>
+    </view>
+    <view class="control-grid">
+      <view class="control-item {{fanOn ? 'active' : ''}}" bindtap="toggleFan">
+        <view class="control-icon">💨</view>
+        <text class="control-name">风扇</text>
+        <text class="control-state">{{fanOn ? 'ON' : 'OFF'}}</text>
+      </view>
+      <view class="control-item {{ledOn ? 'active' : ''}}" bindtap="toggleLed">
+        <view class="control-icon">💡</view>
+        <text class="control-name">LED</text>
+        <text class="control-state">{{ledOn ? 'ON' : 'OFF'}}</text>
+      </view>
+      <view class="control-item {{buzzerOn ? 'active' : ''}}" bindtap="toggleBuzzer">
+        <view class="control-icon">🔔</view>
+        <text class="control-name">蜂鸣器</text>
+        <text class="control-state">{{buzzerOn ? 'ON' : 'OFF'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- AI 对话卡片 -->
+  <view class="card chat-card">
+    <view class="chat-header">
+      <text>🤖 AI 环境助手</text>
+    </view>
+    <scroll-view class="chat-messages" scroll-y scroll-top="{{scrollTop}}" scroll-with-animation>
+      <block wx:for="{{msgs}}" wx:key="index">
+        <view class="msg {{item.role === 'user' ? 'msg-user' : 'msg-ai'}}">
+          <view class="msg-bubble">{{item.content}}</view>
+        </view>
+      </block>
+      <view wx:if="{{chatLoading}}" class="msg msg-ai">
+        <view class="msg-bubble loading">
+          <text class="loading-dot"></text>
+          <text class="loading-dot"></text>
+          <text class="loading-dot"></text>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="chat-input-row">
+      <input class="chat-input" placeholder="请输入您的问题..." value="{{chatInp}}" bindinput="onInput" confirm-type="send" bindconfirm="sendChat" />
+      <view class="chat-send" bindtap="sendChat">发送</view>
+    </view>
+    <view class="quick-tags">
+      <view class="quick-tag" bindtap="quick" data-t="需要开风扇降温吗？">💨 降温建议</view>
+      <view class="quick-tag" bindtap="quick" data-t="适合睡觉吗？">😴 睡眠建议</view>
+      <view class="quick-tag" bindtap="quick" data-t="光线适合阅读吗？">📖 阅读建议</view>
+      <view class="quick-tag" bindtap="quick" data-t="湿度怎么样？">💧 湿度查询</view>
+    </view>
+  </view>
+</view>

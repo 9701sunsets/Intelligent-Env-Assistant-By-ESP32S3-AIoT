@@ -1,0 +1,82 @@
+<view class="container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <text class="page-icon">📋</text>
+    <view>
+      <view class="page-title">历史记录</view>
+      <view class="page-subtitle">过去24小时环境数据</view>
+    </view>
+  </view>
+
+  <!-- 统计卡片 -->
+  <view class="card stats-card">
+    <view class="stats-row">
+      <view class="stat-item">
+        <text class="stat-icon">🌡</text>
+        <text class="stat-label">平均温度</text>
+        <text class="stat-value">{{avgTemp}}°C</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item">
+        <text class="stat-icon">💧</text>
+        <text class="stat-label">平均湿度</text>
+        <text class="stat-value">{{avgHum}}%</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-item">
+        <text class="stat-icon">☀</text>
+        <text class="stat-label">平均光照</text>
+        <text class="stat-value">{{avgLight}} lux</text>
+      </view>
+    </view>
+    <view class="stats-summary">
+      <view class="status-dot {{comfortH > display.length * 0.5 ? 'online' : 'warning'}}"></view>
+      <text>{{summary}}</text>
+    </view>
+  </view>
+
+  <!-- 图表卡片 -->
+  <view class="card chart-card">
+    <view class="chart-header">
+      <text>📈 趋势图</text>
+      <view class="chart-tabs">
+        <view class="chart-tab {{chartMode === 'th' ? 'active' : ''}}" bindtap="switchMode" data-mode="th">
+          <text>🌡 温湿度</text>
+        </view>
+        <view class="chart-tab {{chartMode === 'light' ? 'active' : ''}}" bindtap="switchMode" data-mode="light">
+          <text>☀ 光照</text>
+        </view>
+      </view>
+    </view>
+    <canvas type="2d" id="hChart" class="history-canvas"></canvas>
+  </view>
+
+  <!-- 数据列表 -->
+  <view class="card list-card">
+    <view class="list-header">
+      <text>📋 详细数据</text>
+      <text class="list-count">共 {{display.length}} 条</text>
+    </view>
+    <view class="data-list">
+      <block wx:for="{{display}}" wx:key="index">
+        <view class="data-item">
+          <view class="data-time">{{item.label}}</view>
+          <view class="data-values">
+            <view class="data-val temp">
+              <text>🌡 {{item.temperature}}°C</text>
+            </view>
+            <view class="data-val hum">
+              <text>💧 {{item.humidity}}%</text>
+            </view>
+            <view class="data-val light">
+              <text>☀ {{item.light}} lux</text>
+            </view>
+          </view>
+          <view class="data-badge {{item.comfort === '舒适' ? 'good' : item.comfort === '异常' ? 'bad' : 'warn'}}">
+            {{item.comfort}}
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>

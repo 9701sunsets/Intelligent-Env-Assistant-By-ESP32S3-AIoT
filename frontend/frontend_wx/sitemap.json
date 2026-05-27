@@ -1,0 +1,4 @@
+{
+  "desc": "智能环境监测助手",
+  "rules": [{ "action": "allow", "page": "*" }]
+}

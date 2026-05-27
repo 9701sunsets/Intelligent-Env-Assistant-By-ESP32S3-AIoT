@@ -1,0 +1,191 @@
+/* ===== 历史记录页样式 ===== */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 16rpx 8rpx 32rpx;
+}
+
+.page-icon {
+  font-size: 56rpx;
+}
+
+.page-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #2C2419;
+}
+
+.page-subtitle {
+  font-size: 22rpx;
+  color: #9E8E80;
+  margin-top: 4rpx;
+}
+
+/* 统计卡片 */
+.stats-card {
+  padding: 28rpx;
+}
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  margin-bottom: 24rpx;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.stat-icon {
+  font-size: 40rpx;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: #9E8E80;
+}
+
+.stat-value {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #2C2419;
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 80rpx;
+  background: #F0E6D8;
+}
+
+.stats-summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #F5EFE6;
+  font-size: 24rpx;
+  color: #5A4E44;
+  gap: 8rpx;
+}
+
+/* 图表 */
+.chart-card {
+  padding: 28rpx;
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.chart-tabs {
+  display: flex;
+  gap: 12rpx;
+}
+
+.chart-tab {
+  padding: 12rpx 24rpx;
+  border-radius: 28rpx;
+  font-size: 24rpx;
+  color: #9E8E80;
+  background: #F5EFE6;
+}
+
+.chart-tab.active {
+  background: #8B5E34;
+  color: #FFFFFF;
+}
+
+.history-canvas {
+  width: 100%;
+  height: 400rpx;
+}
+
+/* 数据列表 */
+.list-card {
+  padding: 28rpx;
+}
+
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.list-count {
+  font-size: 22rpx;
+  color: #9E8E80;
+  font-weight: 400;
+}
+
+.data-list {
+  max-height: 600rpx;
+  overflow-y: auto;
+}
+
+.data-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #F5EFE6;
+}
+
+.data-item:last-child {
+  border-bottom: none;
+}
+
+.data-time {
+  font-size: 24rpx;
+  color: #9E8E80;
+  width: 160rpx;
+  flex-shrink: 0;
+}
+
+.data-values {
+  flex: 1;
+  display: flex;
+  gap: 20rpx;
+}
+
+.data-val {
+  font-size: 24rpx;
+}
+
+.data-val.temp { color: #EA580C; }
+.data-val.hum { color: #5BC0DE; }
+.data-val.light { color: #F5A623; }
+
+.data-badge {
+  padding: 6rpx 16rpx;
+  border-radius: 16rpx;
+  font-size: 20rpx;
+  flex-shrink: 0;
+}
+
+.data-badge.good {
+  background: #F0FAE5;
+  color: #5B8C2A;
+}
+
+.data-badge.warn {
+  background: #FFF5E0;
+  color: #B4781A;
+}
+
+.data-badge.bad {
+  background: #FDEDF0;
+  color: #B84052;
+}
