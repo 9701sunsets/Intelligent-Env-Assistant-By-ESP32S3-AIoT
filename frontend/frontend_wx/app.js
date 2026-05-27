@@ -7,8 +7,8 @@ App({
     this.globalData = {
       userInfo: null,
       systemInfo: null,
-      isMockMode: true,
-      apiBaseUrl: null  // 显式置空，防止任何请求
+      isMockMode: false,// true,
+      apiBaseUrl: 'http://localhost:3000' //null  // 显式置空，防止任何请求
     };
     
     // 捕获基础库灰度版的 timeout 错误（非业务代码问题）

@@ -12,11 +12,11 @@
 
 static const char *TAG = "mq2";
 
-#define MQ2_ADC_CHANNEL       ADC2_CHANNEL_9   // 对应 GPIO20（用户指定）
+#define MQ2_ADC_CHANNEL       ADC1_CHANNEL_6   // 对应 GPIO7（用户指定）
 #define MQ2_ADC_WIDTH         ADC_WIDTH_BIT_12
 #define MQ2_ADC_ATTEN         ADC_ATTEN_DB_11
 
-#define MQ2_DO_GPIO           GPIO_NUM_19      // DO -> GPIO19
+#define MQ2_DO_GPIO           GPIO_NUM_7      // DO -> GPIO7
 #define MQ2_DO_INTR_FLAGS     0
 
 #define MQ2_SAMPLE_INTERVAL_MS    1000
