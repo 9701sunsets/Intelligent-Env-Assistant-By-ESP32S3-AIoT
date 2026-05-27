@@ -1,6 +1,7 @@
 #include "mq2.h"
 #include "esp_log.h"
-#include "driver/adc.h"
+#include "esp_adc/adc_oneshot.h"
+#include "hal/adc_types.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -10,10 +11,16 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "sensor/adc_manager.h"
+
+#ifndef ADC_ATTEN_DB_11
+#define ADC_ATTEN_DB_11 3
+#endif
+
 static const char *TAG = "mq2";
 
-#define MQ2_ADC_CHANNEL       ADC1_CHANNEL_6   // 对应 GPIO7（用户指定）
-#define MQ2_ADC_WIDTH         ADC_WIDTH_BIT_12
+#define MQ2_ADC_CHANNEL       ADC_CHANNEL_6   // 对应 GPIO7（用户指定）
+#define MQ2_ADC_WIDTH         ADC_BITWIDTH_12
 #define MQ2_ADC_ATTEN         ADC_ATTEN_DB_11
 
 #define MQ2_DO_GPIO           GPIO_NUM_7      // DO -> GPIO7
@@ -22,6 +29,8 @@ static const char *TAG = "mq2";
 #define MQ2_SAMPLE_INTERVAL_MS    1000
 #define MQ2_MOVING_WINDOW         5
 #define MQ2_NVS_NAMESPACE         "mq2"
+
+static adc_oneshot_unit_handle_t adc_handle = NULL;
 
 static int adc_window[MQ2_MOVING_WINDOW];
 static int window_idx = 0;
@@ -100,8 +109,21 @@ esp_err_t mq2_init(void)
     gpio_install_isr_service(0);
     gpio_isr_handler_add(MQ2_DO_GPIO, mq2_do_isr, NULL);
 
-    // ADC2 通道不需要显式配置衰减函数（采用 adc2_config_channel_atten）
-    adc2_config_channel_atten(MQ2_ADC_CHANNEL, MQ2_ADC_ATTEN);
+    // 初始化 ADC
+    if (adc_manager_init() != ESP_OK) {
+        ESP_LOGW(TAG, "adc manager init failed");
+        return ESP_FAIL;
+    }
+    adc_handle = adc_manager_get_handle();
+    if (!adc_handle) {
+        ESP_LOGW(TAG, "no adc handle available");
+        return ESP_FAIL;
+    }
+    adc_oneshot_chan_cfg_t chan_cfg = {
+        .atten = MQ2_ADC_ATTEN,
+        .bitwidth = MQ2_ADC_WIDTH,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, MQ2_ADC_CHANNEL, &chan_cfg));
 
     // 初始化滑动窗口
     memset(adc_window, 0, sizeof(adc_window));
@@ -115,10 +137,10 @@ esp_err_t mq2_init(void)
 static int read_adc_raw_once(void)
 {
     int raw = 0;
-    // ADC2 读取：注意在某些 SDK/WiFi 情况下可能失败
-    esp_err_t r = adc2_get_raw(MQ2_ADC_CHANNEL, MQ2_ADC_WIDTH, &raw);
+    // ADC1 读取：注意在某些 SDK/WiFi 情况下可能失败
+    esp_err_t r = adc_oneshot_read(adc_handle, MQ2_ADC_CHANNEL, &raw);
     if (r != ESP_OK) {
-        ESP_LOGW(TAG, "adc2_get_raw err %s", esp_err_to_name(r));
+        ESP_LOGW(TAG, "adc_oneshot_read err %s", esp_err_to_name(r));
         return -1;
     }
     return raw;

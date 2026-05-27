@@ -14,12 +14,13 @@ idf_component_register(
         "mqtt_task.c"
         "sensor/light_sensor.c"
         "sensor/dht11.c"
-        "sensor/mq2.c
+        "sensor/mq2.c"
         "ui/led_control.c"
         "cloud/mqtt_clients.c"
         "utils/json_parser.c"
         "ai/comfort_ai.c"
         "ota/ota_update.c"
+        "sensor/adc_manager.c"
 
     PRIV_REQUIRES 
         spi_flash

@@ -53,11 +53,6 @@ void mqtt_main_task(void *arg)
     mqtt_client_init_with_broker(broker_host, broker_port, "esp32_001");
     mqtt_client_start();
 
-    dht11_init(GPIO_NUM_1);
-    init_light_sensor();
-    mq2_init();
-    mq2_task_start();
-
     while (1) {
         // 读取传感器数据
         int temp=0, hum=0;
@@ -82,7 +77,7 @@ void mqtt_main_task(void *arg)
         // 时间戳
         char ts[64]; get_iso_ts(ts, sizeof(ts));
 
-        ESP_LOGI(TAG, "Sensor reading - Temp=%dC Hum=%d%% Light=%d Comfort=%s RSSI=%ddBm", temp, hum, light, comfort, wifi_rssi);
+        ESP_LOGI(TAG, "Sensor reading - T=%dC Hum=%d%% L=%d Comfort=%s RSSI=%ddBm", temp, hum, light, comfort, wifi_rssi);
 
         // 创建并发布
         cJSON *up = json_create_upload("esp32_001", (double)temp, (double)hum, light, comfort, wifi_rssi, ts,
