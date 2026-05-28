@@ -22,6 +22,8 @@ def latest_sensor():
         "humidity": 58.2,
         "light": 430,
         "comfort": "comfortable",
+        "mq2_ppm": 100.0,
+        "mq2_alarm": 0,
         "timestamp": "2024-06-01T12:34:56Z"
       }
     }
@@ -42,6 +44,8 @@ def latest_sensor():
             "humidity": row.humidity,
             "light": row.light,
             "comfort": row.comfort,
+            "mq2_ppm": row.mq2_ppm,
+            "mq2_alarm": bool(row.mq2_alarm) if row.mq2_alarm is not None else None,
             "timestamp": row.timestamp.isoformat() if row.timestamp is not None else None
         }
         return jsonify({"code": 200, "data": data}), 200
@@ -99,6 +103,8 @@ def history_sensor():
                 "humidity": r.humidity,
                 "light": r.light,
                 "comfort": r.comfort,
+                "mq2_ppm": r.mq2_ppm,
+                "mq2_alarm": bool(r.mq2_alarm) if r.mq2_alarm is not None else None,
                 "timestamp": ts_s
             })
         return jsonify({"code": 200, "data": out}), 200

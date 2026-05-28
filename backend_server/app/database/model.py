@@ -12,6 +12,8 @@ class SensorData(Base):
     humidity = Column(Float)
     light = Column(Integer)
     comfort = Column(String(64))
+    mq2_ppm = Column(Float, nullable=True)
+    mq2_alarm = Column(Integer, nullable=True)
     timestamp = Column(DateTime, nullable=False)
 
 class DeviceInfo(Base):

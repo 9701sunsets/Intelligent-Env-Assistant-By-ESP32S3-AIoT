@@ -5,7 +5,7 @@
 
 cJSON *json_create_upload(const char *device_id, double temperature, double humidity,
                           int light, const char *comfort, int wifi_rssi, const char *timestamp,
-                          int mq2_adc_raw, double mq2_voltage, double mq2_ppm, int mq2_alarm)
+                          double mq2_ppm, int mq2_alarm)
 {
     cJSON *root = cJSON_CreateObject();
     if (!root) return NULL;
@@ -20,8 +20,6 @@ cJSON *json_create_upload(const char *device_id, double temperature, double humi
     if(mq2)
     {
         cJSON_AddItemToObject(root, "mq2", mq2);
-        cJSON_AddNumberToObject(mq2, "adc_raw", mq2_adc_raw);
-        cJSON_AddNumberToObject(mq2, "voltage", mq2_voltage);
         cJSON_AddNumberToObject(mq2, "ppm_est", mq2_ppm);
         cJSON_AddBoolToObject(mq2, "alarm", mq2_alarm ? cJSON_True : cJSON_False);
     }

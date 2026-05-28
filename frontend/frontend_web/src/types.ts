@@ -5,12 +5,16 @@ export interface SensorData {
   light: number;
   comfort: "comfortable" | "uncomfortable" | "alert";
   timestamp: string;
+  mq2_ppm?: number;
+  mq2_alarm?: boolean;
 }
 
 export interface HistoryItem {
   temperature: number;
   humidity: number;
   light: number;
+  mq2_ppm?: number;
+  mq2_alarm?: boolean;
   timestamp: string;
 }
 

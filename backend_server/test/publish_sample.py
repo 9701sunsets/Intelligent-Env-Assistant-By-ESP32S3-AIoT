@@ -8,6 +8,10 @@ payload = {
   "temperature":26.5,
   "humidity":55.4,
   "light":380,
+  "mq2": {
+    "ppm_est": 120.0,
+    "alarm": False
+  },
   "timestamp": "2026-05-21T08:00:00Z"
 }
 c.publish("aiot/device/upload", json.dumps(payload), qos=1)

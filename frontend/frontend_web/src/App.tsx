@@ -431,7 +431,7 @@ export default function App() {
           </div>
 
           {/* 3. Dynamic Gauges Matrix */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             
             {/* Card Temperature */}
             <div className="bg-white border border-[#EFE9DF] rounded-3xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-[0_8px_32px_rgba(215,200,185,0.12)] shadow-[0_4px_20px_rgba(215,200,185,0.06)]">
@@ -528,6 +528,46 @@ export default function App() {
                   <span>暗室</span>
                   <span>1000 lx</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Card MQ2 PPM */}
+            <div className="bg-white border border-[#EFE9DF] rounded-3xl p-6 relative overflow-hidden transition-all duration-300 hover:shadow-[0_8px_32px_rgba(215,200,185,0.12)] shadow-[0_4px_20px_rgba(215,200,185,0.06)]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-stone-400 font-semibold tracking-wide">空气可燃气浓度</span>
+                <span className="p-2 bg-rose-50 text-rose-600 rounded-xl">
+                  <ShieldAlert className="w-4 h-4" />
+                </span>
+              </div>
+
+              <div className="mt-4 flex items-baseline gap-1">
+                <span className="text-4xl md:text-5xl font-mono font-bold text-stone-800 tracking-tight">
+                  {latestData?.mq2_ppm ?? 380}
+                </span>
+                <span className="text-xl text-stone-400 font-medium">ppm</span>
+              </div>
+
+              <div className="mt-4">
+                <div className="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full transition-all duration-1000"
+                    style={{ width: `${Math.max(5, Math.min(100, ((latestData?.mq2_ppm ?? 0) / 1000) * 100))}%` }}
+                  ></div>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-stone-400 font-mono font-medium mt-1.5">
+                  <span>0 ppm</span>
+                  <span>1000 ppm</span>
+                </div>
+              </div>
+
+              <div className="mt-3 text-[11px]">
+                {latestData?.mq2_alarm === true ? (
+                  <span className="inline-flex px-2 py-1 bg-rose-50 border border-rose-200 text-rose-800 rounded-md text-xs font-bold">警报：超限</span>
+                ) : latestData?.mq2_alarm === false ? (
+                  <span className="inline-flex px-2 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-md text-xs font-bold">正常</span>
+                ) : (
+                  <span className="text-stone-400 text-xs">无历史</span>
+                )}
               </div>
             </div>
 

@@ -77,11 +77,11 @@ void mqtt_main_task(void *arg)
         // 时间戳
         char ts[64]; get_iso_ts(ts, sizeof(ts));
 
-        ESP_LOGI(TAG, "Sensor reading - T=%dC Hum=%d%% L=%d Comfort=%s RSSI=%ddBm", temp, hum, light, comfort, wifi_rssi);
+        ESP_LOGI(TAG, "Sensor reading - T=%dC Hum=%d%% L=%d Comfort=%s RSSI=%ddBm PPM=%.1f Alarm=%d", temp, hum, light, comfort, wifi_rssi, mq2_ppm, mq2_alarm);
 
         // 创建并发布
         cJSON *up = json_create_upload("esp32_001", (double)temp, (double)hum, light, comfort, wifi_rssi, ts,
-                                      mq2_raw, mq2_v, mq2_ppm, mq2_alarm);
+                                      mq2_ppm, mq2_alarm);
         mqtt_publish_upload_json(up);
         cJSON_Delete(up);
 

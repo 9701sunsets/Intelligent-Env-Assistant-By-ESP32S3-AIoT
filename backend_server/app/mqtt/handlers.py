@@ -18,6 +18,21 @@ def _sanitize_payload(payload, last_entry=None):
     t = _to_float(p.get("temperature"))
     h = _to_float(p.get("humidity"))
     light = p.get("light") or 0
+    mq2 = p.get("mq2") or {}
+    if isinstance(mq2, dict):
+        try:
+            p["mq2"] = {
+                "ppm_est": float(mq2.get("ppm_est")) if mq2.get("ppm_est") is not None else None,
+                "alarm": bool(mq2.get("alarm")) if mq2.get("alarm") is not None else None
+            }
+        except Exception:
+            p["mq2"] = {"ppm_est": None, "alarm": None}
+    else:
+        # 如果上层直接有 ppm_est / mq2_alarm，合并为 mq2 对象
+        p["mq2"] = {
+            "ppm_est": _to_float(p.get("ppm_est")),
+            "alarm": bool(p.get("mq2_alarm")) if p.get("mq2_alarm") is not None else None
+        }
     # 规则：若同时为 0 且光照合理（设备在场），则认为读数异常
     if (t == 0 or t is None) and (h == 0 or h is None) and (light and int(light) > 50):
         # 若有上次有效值则回退到上次值

@@ -29,14 +29,14 @@ const deviceStates: { [key: string]: { led: "on" | "off"; buzzer: "on" | "off"; 
 };
 
 // Current dynamic readings
-const currentReadings: { [key: string]: { temperature: number; humidity: number; light: number; timestamp: string } } = {
-  esp32_001: { temperature: 24.8, humidity: 55.4, light: 380, timestamp: new Date().toISOString() },
-  esp32_002: { temperature: 22.3, humidity: 62.1, light: 150, timestamp: new Date().toISOString() },
-  esp32_003: { temperature: 21.0, humidity: 50.0, light: 0, timestamp: new Date(Date.now() - 3600 * 1000).toISOString() }
+const currentReadings: { [key: string]: { temperature: number; humidity: number; light: number; mq2_ppm?: number; mq2_alarm?: boolean; timestamp: string } } = {
+  esp32_001: { temperature: 24.8, humidity: 55.4, light: 380, mq2_ppm: 50, mq2_alarm: false, timestamp: new Date().toISOString() },
+  esp32_002: { temperature: 22.3, humidity: 62.1, light: 150, mq2_ppm: 45, mq2_alarm: false, timestamp: new Date().toISOString() },
+  esp32_003: { temperature: 21.0, humidity: 50.0, light: 0, mq2_ppm: 60, mq2_alarm: true, timestamp: new Date(Date.now() - 3600 * 1000).toISOString() }
 };
 
 // Seed historical readings (past 24 data points, intervals of 10 minutes)
-const historicalReadings: { [key: string]: Array<{ temperature: number; humidity: number; light: number; timestamp: string }> } = {
+const historicalReadings: { [key: string]: Array<{ temperature: number; humidity: number; light: number; mq2_ppm?: number; mq2_alarm?: boolean; timestamp: string }> } = {
   esp32_001: [],
   esp32_002: [],
   esp32_003: []
@@ -55,6 +55,8 @@ const initHistory = () => {
       temperature: base001.temperature,
       humidity: base001.humidity,
       light: base001.light,
+      mq2_ppm: base001.mq2_ppm,
+      mq2_alarm: base001.mq2_alarm,
       timestamp: time
     });
 
@@ -62,6 +64,8 @@ const initHistory = () => {
       temperature: base002.temperature,
       humidity: base002.humidity,
       light: base002.light,
+      mq2_ppm: base002.mq2_ppm,
+      mq2_alarm: base002.mq2_alarm,
       timestamp: time
     });
   }
@@ -74,12 +78,16 @@ const initHistory = () => {
       temperature: +(23.0 + Math.sin(i / 4) * 2.5 + Math.random() * 0.4).toFixed(1),
       humidity: +(50.0 + Math.cos(i / 5) * 8.0 + Math.random() * 1.5).toFixed(1),
       light: Math.floor(300 + Math.sin(i / 3) * 150 + Math.random() * 40),
+      mq2_ppm: +(50 + Math.sin(i / 4) * 10 + Math.random() * 5).toFixed(1),
+      mq2_alarm: false,
       timestamp: time
     });
     historicalReadings.esp32_002.push({
       temperature: +(21.0 + Math.sin(i / 6) * 1.8 + Math.random() * 0.3).toFixed(1),
       humidity: +(58.0 + Math.cos(i / 4) * 6.0 + Math.random() * 1.2).toFixed(1),
       light: Math.floor(120 + Math.sin(i / 4) * 50 + Math.random() * 20),
+      mq2_ppm: +(45 + Math.sin(i / 5) * 8 + Math.random() * 4).toFixed(1),
+      mq2_alarm: false,
       timestamp: time
     });
   }*/
@@ -206,6 +214,8 @@ app.get("/api/history", (req, res) => {
       temperature: item.temperature,
       humidity: item.humidity,
       light: item.light,
+      mq2_ppm: item.mq2_ppm,
+      mq2_alarm: item.mq2_alarm,
       timestamp: item.timestamp
     }))
   });
@@ -213,11 +223,13 @@ app.get("/api/history", (req, res) => {
 
 // 4. POST /api/ai/advice
 app.post("/api/ai/advice", async (req, res) => {
-  const { device_id, temperature, humidity, light } = req.body;
+  const { device_id, temperature, humidity, light, mq2_ppm, mq2_alarm } = req.body;
   const finalId = device_id || "esp32_001";
   const t = temperature != null ? Number(temperature) : 25;
   const h = humidity != null ? Number(humidity) : 55;
   const l = light != null ? Number(light) : 300;
+  const mq2Ppm = mq2_ppm != null ? Number(mq2_ppm) : null;
+  const mq2Alarm = mq2_alarm != null ? Boolean(mq2_alarm) : null;
 
   // Let's decide local comfort rules in case Gemini is offline/missing
   let advice = "当前室内温湿度及光照处于理想的适宜状态，氛围舒适，适合办公与休息。";
@@ -250,6 +262,8 @@ app.post("/api/ai/advice", async (req, res) => {
 - Temperature: ${t} °C
 - Humidity: ${h} %
 - Light level: ${l} lux
+- MQ2 PPM: ${mq2Ppm}
+- MQ2 Alarm: ${mq2Alarm}
 Give a highly personalized, practical, and premium advice (strict maximum of 40 words, in Chinese language) on how the user can improve their comfort and wellness in this room right now. Be direct and avoid stating unnecessary details. Keep instructions professional.`;
 
       const response = await ai.models.generateContent({
