@@ -51,7 +51,6 @@ def create_app():
     app.config['DATABASE_SESSION'] = SessionLocal
 
     # 注册API路由
-    # TODO: 统一约定注入点（app.extensions['services']）
     control.init_routes(app)
     ai.init_routes(app)
     sensor.init_routes(app)

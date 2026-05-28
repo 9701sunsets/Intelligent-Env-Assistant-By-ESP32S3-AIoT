@@ -58,29 +58,48 @@ Page({
   },
 
   onLoad() {
-    this.setData({ history: genTrendData() });
+    // 若启用真实后端，则从后端拉取历史与最新数据；否则使用本地模拟数据
+    const app = getApp();
+    if (app && app.globalData && !app.globalData.isMockMode) {
+      this.fetchHistory();
+      this.fetchLatest();
+    } else {
+      this.setData({ history: genTrendData() });
+    }
   },
 
   onReady() {
     setTimeout(() => this.drawAll(), 300);
+    const app = getApp();
+    if (app && app.globalData && !app.globalData.isMockMode) {
+      // 每 4s 拉取最新传感器数据
+      this._poller = setInterval(() => this.fetchLatest(), 4000);
+    }
+  },
+
+  onUnload() {
+    if (this._poller) clearInterval(this._poller);
   },
 
   // ===== Device Controls =====
   toggleFan() {
     const v = !this.data.fanOn;
     this.setData({ fanOn: v });
+    this.controlDevice('fan', { state: v ? 'on' : 'off' });
     wx.showToast({ title: v ? '风扇已开启' : '风扇已关闭', icon: 'none', duration: 800 });
   },
 
   toggleLed() {
     const v = !this.data.ledOn;
     this.setData({ ledOn: v });
+    this.controlDevice('led', { state: v ? 'on' : 'off' });
     wx.showToast({ title: v ? 'LED已开启' : 'LED已关闭', icon: 'none', duration: 800 });
   },
 
   toggleBuzzer() {
     const v = !this.data.buzzerOn;
     this.setData({ buzzerOn: v });
+    this.controlDevice('buzzer', { state: v ? 'on' : 'off' });
     wx.showToast({ title: v ? '蜂鸣器已开启' : '蜂鸣器已关闭', icon: 'none', duration: 800 });
     if (v) setTimeout(() => this.setData({ buzzerOn: false }), 3000);
   },
@@ -101,8 +120,8 @@ Page({
     const maxs = [45, 100, 1000, 2000];
     const colors = ['#EA580C', '#5BC0DE', '#F5A623', '#34D399'];
 
-    let dpr = 2;
-    try { const info = wx.getSystemInfoSync ? wx.getSystemInfoSync() : null; dpr = info && info.pixelRatio ? info.pixelRatio : 2; } catch (e) { dpr = 2; }
+    const sysInfo = wx.getWindowInfo();
+    let dpr = (sysInfo && sysInfo.pixelRatio) || 2;
 
     ids.forEach((id, i) => {
       wx.createSelectorQuery().select('#' + id).fields({ node: true, size: true }).exec(res => {
@@ -144,8 +163,8 @@ Page({
       const W = res[0].width, H = 200;
       if (W <= 0) return;
 
-      let dpr = 2;
-      try { const info = wx.getSystemInfoSync ? wx.getSystemInfoSync() : null; dpr = info && info.pixelRatio ? info.pixelRatio : 2; } catch (e) { dpr = 2; }
+      const sysInfo = wx.getWindowInfo();
+      let dpr = (sysInfo && sysInfo.pixelRatio) || 2;
 
       cvs.width = W * dpr;
       cvs.height = H * dpr;
@@ -254,6 +273,138 @@ Page({
     ctx.setLineDash([]);
   },
 
+  // ===== Network / Backend Integration =====
+  getApiBase() {
+    const app = getApp();
+    return (app && app.globalData && app.globalData.apiBaseUrl) || '';
+  },
+
+  fetchLatest() {
+    const base = this.getApiBase();
+    if (!base) return;
+    wx.request({
+      url: `${base}/api/latest`,
+      method: 'GET',
+      success: (res) => {
+        if (res.data && res.data.code === 200 && res.data.data) {
+          const d = res.data.data;
+          this.setData({
+            sensor: {
+              temperature: d.temperature,
+              humidity: d.humidity,
+              light: d.light,
+              ppm: d.mq2_ppm || this.data.sensor.ppm
+            },
+            lastUpdate: new Date(d.timestamp).toLocaleString(),
+            fanOn: !!d.fan_on,
+            ledOn: !!d.led_on,
+            buzzerOn: !!d.buzzer_on
+          });
+          this.drawAll();
+        }
+      }
+    });
+  },
+
+  fetchHistory(deviceId = 'esp32_001', start, end) {
+    const base = this.getApiBase();
+    if (!base) return;
+    const data = { device_id: deviceId };
+    if (start) data.start = start;
+    if (end) data.end = end;
+    wx.request({
+      url: `${base}/api/history`,
+      method: 'GET',
+      data: data,
+      success: (res) => {
+        if (res.data && res.data.code === 200) {
+          const raw = res.data.data || [];
+          const norm = [];
+          let prev = {
+            temperature: (this.data.sensor && this.data.sensor.temperature) || 25,
+            humidity: (this.data.sensor && this.data.sensor.humidity) || 50,
+            light: (this.data.sensor && this.data.sensor.light) || 100,
+            ppm: (this.data.sensor && this.data.sensor.ppm) || 100
+          };
+          raw.forEach((it) => {
+            const t = Number(it.temperature);
+            const h = Number(it.humidity);
+            const l = Number(it.light ?? it.light);
+            const p = Number(it.ppm ?? it.mq2_ppm ?? it.ppm);
+            const ts = it.timestamp || new Date().toISOString();
+            const nt = Number.isFinite(t) ? t : prev.temperature;
+            const nh = Number.isFinite(h) ? h : prev.humidity;
+            const nl = Number.isFinite(l) ? l : prev.light;
+            const np = Number.isFinite(p) ? p : prev.ppm;
+            norm.push({ temperature: nt, humidity: nh, light: nl, ppm: np, timestamp: ts });
+            prev = { temperature: nt, humidity: nh, light: nl, ppm: np };
+          });
+          let finalData = norm;
+          if(norm.length > 200){
+            const step = Math.floor(norm.length / 200);
+            finalData = norm.filter((_, i) => i % step === 0);
+          }
+          this.setData({ history: finalData });
+          this.drawTrend();
+        }
+      },
+      fail: () => {}
+    });
+  },
+
+  fetchAIAdvice({ device_id='esp32_001', temperature, humidity, light }, cb) {
+    const base = this.getApiBase();
+    if (!base) return;
+    wx.request({
+      url: `${base}/api/ai/advice`,
+      method: 'POST',
+      header: { 'content-type': 'application/json' },
+      data: { device_id, temperature, humidity, light },
+      success: (res) => {
+        if (res.data && res.data.code === 200 && res.data.data) {
+          if (typeof cb === 'function') cb(null, res.data.data);
+        } else {
+          if (typeof cb === 'function') cb(new Error('no data'));
+        }
+      },
+      fail: (err) => { if (typeof cb === 'function') cb(err); }
+    });
+  },
+
+  fetchDeviceList(cb) {
+    const base = this.getApiBase();
+    if (!base) return;
+    wx.request({
+      url: `${base}/api/device/list`,
+      method: 'GET',
+      success: (res) => {
+        if (res.data && res.data.code === 200) {
+          if (typeof cb === 'function') cb(null, res.data.data);
+        } else {
+          if (typeof cb === 'function') cb(new Error('no data'));
+        }
+      },
+      fail: (err) => { if (typeof cb === 'function') cb(err); }
+    });
+  },
+
+  controlDevice(target, action) {
+    const base = this.getApiBase();
+    if (!base) return;
+    wx.request({
+      url: `${base}/api/device/control`,
+      method: 'POST',
+      header: { 'content-type': 'application/json' },
+      data: { device_id: 'esp32_001', target, action },
+      success: (res) => {
+        if (!(res.data && res.data.code === 200)) {
+          wx.showToast({ title: '控制命令发送失败', icon: 'none' });
+        }
+      },
+      fail: () => wx.showToast({ title: '网络错误，控制失败', icon: 'none' })
+    });
+  },
+
   // ===== Chat =====
   quick(e) { this.sendChatMessage(e.currentTarget.dataset.t); },
 
@@ -267,18 +418,56 @@ Page({
   },
 
   sendChatMessage(text) {
-    const msgs = [...this.data.msgs, { role: 'user', content: text }];
-    this.setData({ msgs, chatLoading: true });
+    const userMsg = { role: 'user', content: text };
+    // 只追加新消息，不再全量更新
+    const newMsgIndex = this.data.msgs.length; // 用户消息的索引
+    this.setData({
+      [`msgs[${newMsgIndex}]`]: userMsg,
+      chatLoading: true
+    });
     this.scrollToBottom();
-
-    setTimeout(() => {
-      this.setData({
-        msgs: [...msgs, { role: 'ai', content: this.generateReply(text) }],
-        chatLoading: false
-      });
-      this.scrollToBottom();
-    }, 600);
+  
+    const base = this.getApiBase();
+    if (!base) {
+      setTimeout(() => {
+        const aiMsg = { role: 'ai', content: this.generateReply(text) };
+        const aiIndex = this.data.msgs.length;
+        this.setData({
+          [`msgs[${aiIndex}]`]: aiMsg,
+          chatLoading: false
+        });
+        this.scrollToBottom();
+      }, 400);
+      return;
+    }
+  
+    wx.request({
+      url: `${base}/api/ai/chat`,
+      method: 'POST',
+      header: { 'content-type': 'application/json' },
+      data: { device_id: 'esp32_001', question: text },
+      success: (res) => {
+        const answer = res.data && res.data.data && res.data.data.answer
+          ? res.data.data.answer
+          : (res.data && res.data.data ? JSON.stringify(res.data.data) : '抱歉，未收到回复');
+        const aiIndex = this.data.msgs.length;
+        this.setData({
+          [`msgs[${aiIndex}]`]: { role: 'ai', content: answer },
+          chatLoading: false
+        });
+        this.scrollToBottom();
+      },
+      fail: () => {
+        const aiIndex = this.data.msgs.length;
+        this.setData({
+          [`msgs[${aiIndex}]`]: { role: 'ai', content: '网络错误，稍后重试' },
+          chatLoading: false
+        });
+        this.scrollToBottom();
+      }
+    });
   },
+  
 
   generateReply(text) {
     const { temperature: t, humidity: h, light: l } = this.data.sensor;
