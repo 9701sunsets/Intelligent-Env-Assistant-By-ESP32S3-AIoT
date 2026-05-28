@@ -3,7 +3,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timezone
 from app.database.model import SensorData, DeviceInfo, Base
-from app.mqtt.handlers import _to_float
 
 ADC_TO_LUX = 411800
 
@@ -63,9 +62,20 @@ def save_sensor_data(session, payload):
         hum = None
 
     mq2 = payload.get("mq2") if isinstance(payload.get("mq2"), dict) else {}
-    mq2_ppm = _to_float(mq2.get("ppm_est") or payload.get("ppm_est"))
+    mq2_ppm = None
+    try:
+        raw_ppm = float(mq2.get("ppm_est") or payload.get("ppm_est"))
+        if raw_ppm is not None:
+            mq2_ppm = round(float(raw_ppm), 2)
+    except Exception:
+        mq2_ppm = None
+
     mq2_alarm = mq2.get("alarm")
     if mq2_alarm is None:
+        mq2_alarm = payload.get("mq2_alarm")
+
+    # 规范为 0/1/None
+    if isinstance(mq2_alarm, bool):
         mq2_alarm = 1 if mq2_alarm else 0
     else:
         try:

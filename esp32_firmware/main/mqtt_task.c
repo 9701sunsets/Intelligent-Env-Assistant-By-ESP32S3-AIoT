@@ -62,7 +62,7 @@ void mqtt_main_task(void *arg)
         int mq2_raw = mq2_read_raw();
         double mq2_v = mq2_read_voltage();
         double mq2_ppm = mq2_read_ppm();
-        int mq2_alarm = mq2_get_alarm() ? 1 : 0;
+        int mq2_alarm = (mq2_ppm >= 300) ? 1 : 0; // TODO: 警告设置
 
         // 获取 RSSI
         int wifi_rssi = -127;

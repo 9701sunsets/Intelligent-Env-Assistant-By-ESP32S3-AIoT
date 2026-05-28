@@ -61,6 +61,7 @@ class MQTTClient:
     def _on_message(self, client, userdata, msg):
         '''MQTT消息回调，处理不同主题的消息'''
         try:
+            logger.info("Raw payload on %s: %s", msg.topic, msg.payload)
             payload = msg.payload.decode('utf-8')
             data = json.loads(payload)
         except Exception as e:
@@ -79,7 +80,7 @@ class MQTTClient:
         if not isinstance(data, dict):
             logger.warning("upload payload not dict")
             return
-        logger.info("Received device upload: %s", data)
+        logger.info("Received dev upload: %s", data)
         if callable(self.on_upload):
             try:
                 if self.flask_app:
@@ -96,7 +97,7 @@ class MQTTClient:
         if not isinstance(data, dict):
             logger.warning("status payload not dict")
             return
-        logger.info("Received device status: %s", data)
+        logger.info("Received dev status: %s", data)
         if callable(self.on_status):
             try:
                 if self.flask_app:

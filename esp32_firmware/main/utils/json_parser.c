@@ -21,7 +21,7 @@ cJSON *json_create_upload(const char *device_id, double temperature, double humi
     {
         cJSON_AddItemToObject(root, "mq2", mq2);
         cJSON_AddNumberToObject(mq2, "ppm_est", mq2_ppm);
-        cJSON_AddBoolToObject(mq2, "alarm", mq2_alarm ? cJSON_True : cJSON_False);
+        cJSON_AddBoolToObject(mq2, "alarm", mq2_alarm ? 1 : 0);
     }
     return root;
 }

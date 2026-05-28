@@ -41,8 +41,8 @@ static uint32_t last_alarm_ts = 0;
 static int alarm_report_interval_s = 30; // 限流：30s 内只上报一次相同告警
 
 // 校准参数（默认未标定）
-static float calib_slope = 1.0f;
-static float calib_offset = 0.0f;
+static float calib_slope = -0.9132f;
+static float calib_offset = 3740.0f;
 static int saved_thresh_raw = 2000; // 默认阈值，可由 NVS 覆盖
 
 static QueueHandle_t mq2_evt_queue = NULL;
@@ -186,9 +186,11 @@ float mq2_read_ppm(void)
 // 获取 DO 状态（经过去抖/限流）
 bool mq2_get_alarm(void)
 {
-    // 优先读取 DO 引脚（即时）
+    // 结合 DO 引脚和 AO 触发标志，任一为真即视为告警
     int level = gpio_get_level(MQ2_DO_GPIO);
-    return level != 0;
+    bool alarm = (level != 0) || do_alarm_flag;
+    do_alarm_flag = false; // 读取后清除标志
+    return alarm;
 }
 
 esp_err_t mq2_set_threshold_raw(int raw)

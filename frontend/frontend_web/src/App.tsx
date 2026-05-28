@@ -541,8 +541,8 @@ export default function App() {
               </div>
 
               <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl md:text-5xl font-mono font-bold text-stone-800 tracking-tight">
-                  {latestData?.mq2_ppm ?? 380}
+                <span className="text-xl md:text-3xl font-mono font-bold text-stone-800 tracking-tight">
+                  {latestData?.mq2_ppm ?? 0}
                 </span>
                 <span className="text-xl text-stone-400 font-medium">ppm</span>
               </div>
