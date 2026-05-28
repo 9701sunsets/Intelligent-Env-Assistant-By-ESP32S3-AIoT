@@ -167,6 +167,7 @@
 .data-val.temp { color: #EA580C; }
 .data-val.hum { color: #5BC0DE; }
 .data-val.light { color: #F5A623; }
+.data-val.ppm { color: #5BC0DE; }
 
 .data-badge {
   padding: 6rpx 16rpx;

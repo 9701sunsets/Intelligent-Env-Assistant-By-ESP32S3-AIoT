@@ -12,6 +12,7 @@ function genTrendData() {
       temperature: Math.round((24 + Math.sin((hour - 6) * Math.PI / 12) * 3 + (Math.random() - 0.5)) * 10) / 10,
       humidity: Math.round(55 + Math.sin((hour - 12) * Math.PI / 12) * 10 + (Math.random() - 0.5) * 4),
       light: isNight ? Math.round(Math.random() * 10) : Math.round(100 + Math.sin((hour - 6) * Math.PI / 12) * 350),
+      ppm: Math.round(80 + Math.random() * 40),
       timestamp: new Date(t).toISOString(),
     });
   }
@@ -20,7 +21,7 @@ function genTrendData() {
 
 Page({
   data: {
-    sensor: { temperature: 26.5, humidity: 58, light: 320 },
+    sensor: { temperature: 26.5, humidity: 58, light: 320, ppm: 100},
     lastUpdate: '刚刚',
     connected: false,
     cBg: '#FFF5E0',
@@ -36,6 +37,9 @@ Page({
     lDot: '#F59E0B',
     lColor: '#F59E0B',
     lText: '明亮',
+    pDot: '#34D399',
+    pColor: '#34D399',
+    pText: '正常',
     aText: '当前环境整体舒适，温度略高建议适当通风，光照充足适合阅读。',
     aBorder: '#EA580C',
     fanOn: false,
@@ -92,10 +96,10 @@ Page({
   },
 
   drawRings() {
-    const ids = ['ring0', 'ring1', 'ring2'];
-    const vals = [this.data.sensor.temperature, this.data.sensor.humidity, this.data.sensor.light];
-    const maxs = [45, 100, 1000];
-    const colors = ['#EA580C', '#5BC0DE', '#F5A623'];
+    const ids = ['ring0', 'ring1', 'ring2', 'ring3'];
+    const vals = [this.data.sensor.temperature, this.data.sensor.humidity, this.data.sensor.light, this.data.sensor.ppm];
+    const maxs = [45, 100, 1000, 2000];
+    const colors = ['#EA580C', '#5BC0DE', '#F5A623', '#34D399'];
 
     let dpr = 2;
     try { const info = wx.getSystemInfoSync ? wx.getSystemInfoSync() : null; dpr = info && info.pixelRatio ? info.pixelRatio : 2; } catch (e) { dpr = 2; }
@@ -167,8 +171,10 @@ Page({
       if (mode === 'th') {
         this.curve(ctx, data, 'temperature', '#EA580C', pad, cw, ch, false);
         this.curve(ctx, data, 'humidity', '#5BC0DE', pad, cw, ch, true);
-      } else {
+      } else if(mode === 'hight') {
         this.curve(ctx, data, 'light', '#F5A623', pad, cw, ch, false);
+      } else {
+        this.curve(ctx, data, 'ppm', '#EA580C', pad, cw, ch, false);
       }
 
       // X labels
@@ -192,12 +198,19 @@ Page({
           const y = pad.t + (i / 3) * ch;
           ctx.fillText(`${(tMax - (tMax - tMin) * (i / 3)).toFixed(0)}°`, pad.l - 4, y + 3);
         }
-      } else {
+      } else if(mode === 'light') {
         const lights = data.map(d => d.light);
         const lMin = Math.min(...lights) * 0.95, lMax = Math.max(...lights) * 1.05;
         for (let i = 0; i <= 3; i++) {
           const y = pad.t + (i / 3) * ch;
           ctx.fillText(Math.round(lMax - (lMax - lMin) * (i / 3)), pad.l - 4, y + 3);
+        }
+      } else {
+        const ppms = data.map(d => d.ppm);
+        const pMin = Math.min(...ppms) * 0.95, pMax = Math.max(...ppms) * 1.05;
+        for (let i = 0; i <= 3; i++) {
+          const y = pad.t + (i / 3) * ch;
+          ctx.fillText(Math.round(pMax - (pMax - pMin) * (i / 3)), pad.l - 4, y + 3);
         }
       }
     });

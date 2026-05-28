@@ -97,8 +97,8 @@
 
 .ring-item {
   position: relative;
-  width: 200rpx;
-  height: 200rpx;
+  width: 150rpx;
+  height: 150rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -108,8 +108,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 200rpx;
-  height: 200rpx;
+  width: 150rpx;
+  height: 150rpx;
 }
 
 .ring-labels {
@@ -120,7 +120,7 @@
 }
 
 .ring-value {
-  font-size: 36rpx;
+  font-size: 26rpx;
   font-weight: 700;
   color: #2C2419;
 }

@@ -12,6 +12,7 @@ function genHistoryData() {
       temperature: Math.round((24 + Math.sin((hour - 6) * Math.PI / 12) * 3 + (Math.random() - 0.5)) * 10) / 10,
       humidity: Math.round(55 + Math.sin((hour - 12) * Math.PI / 12) * 10 + (Math.random() - 0.5) * 4),
       light: isNight ? Math.round(Math.random() * 10) : Math.round(100 + Math.sin((hour - 6) * Math.PI / 12) * 350),
+      ppm: Math.round(80 + Math.random() * 40),
       timestamp: new Date(t).toISOString(),
     });
   }
@@ -23,17 +24,18 @@ Page({
     avgTemp: '25.4',
     avgHum: '59',
     avgLight: '285',
+    avgPPM: '100',
     chartMode: 'th',
     history: [],
     display: [
-      { label: '22:30', temperature: '26.5', humidity: '58', light: '320', comfort: '舒适' },
-      { label: '21:00', temperature: '26.2', humidity: '60', light: '150', comfort: '舒适' },
-      { label: '20:00', temperature: '27.0', humidity: '55', light: '80', comfort: '稍高' },
-      { label: '18:00', temperature: '27.5', humidity: '53', light: '450', comfort: '异常' },
-      { label: '12:30', temperature: '25.1', humidity: '62', light: '380', comfort: '舒适' },
-      { label: '08:00', temperature: '23.8', humidity: '65', light: '120', comfort: '舒适' },
-      { label: '04:00', temperature: '23.5', humidity: '68', light: '0', comfort: '舒适' },
-      { label: '00:00', temperature: '24.2', humidity: '64', light: '0', comfort: '舒适' }
+      { label: '22:30', temperature: '26.5', humidity: '58', light: '320', comfort: '舒适', ppm: '100' },
+      { label: '21:00', temperature: '26.2', humidity: '60', light: '150', comfort: '舒适', ppm: '110' },
+      { label: '20:00', temperature: '27.0', humidity: '55', light: '80', comfort: '稍高', ppm: '120' },
+      { label: '18:00', temperature: '27.5', humidity: '53', light: '450', comfort: '异常', ppm: '115' },
+      { label: '12:30', temperature: '25.1', humidity: '62', light: '380', comfort: '舒适', ppm: '105' },
+      { label: '08:00', temperature: '23.8', humidity: '65', light: '120', comfort: '舒适', ppm: '105' },
+      { label: '04:00', temperature: '23.5', humidity: '68', light: '0', comfort: '舒适', ppm: '120' },
+      { label: '00:00', temperature: '24.2', humidity: '64', light: '0', comfort: '舒适', ppm: '100' }
     ],
     comfortH: 18,
     summary: '整体环境优良，注意午后通风降温'
@@ -103,8 +105,10 @@ Page({
       if (mode === 'th') {
         this.drawCurve(ctx, data, 'temperature', '#EA580C', pad, cw, ch, false);
         this.drawCurve(ctx, data, 'humidity', '#5BC0DE', pad, cw, ch, true);
-      } else {
+      } else if (mode === 'light') {
         this.drawCurve(ctx, data, 'light', '#F5A623', pad, cw, ch, false);
+      } else {
+        this.drawCurve(ctx, data, 'ppm', '#EA580C', pad, cw, ch, false)
       }
 
       // X-axis labels
@@ -130,7 +134,7 @@ Page({
           const val = (tMax - (tMax - tMin) * (i / 3)).toFixed(0);
           ctx.fillText(`${val}°`, pad.l - 4, y + 3);
         }
-      } else {
+      } else if (mode === 'light') {
         const lights = data.map(d => d.light);
         const lMin = Math.min(...lights) * 0.95;
         const lMax = Math.max(...lights) * 1.05;
@@ -138,6 +142,15 @@ Page({
           const y = pad.t + (i / 3) * ch;
           const val = Math.round(lMax - (lMax - lMin) * (i / 3));
           ctx.fillText(val, pad.l - 4, y + 3);
+        }
+      } else {
+        const ppms = data.map(d => d.ppm);
+        const pMin = Math.min(...ppms) * 0.95;
+        const pMax = Math.max(...ppms) * 1.05;
+        for (let i = 0; i <= 3; i++) {
+          const y = pad.t + (i / 3) * ch;
+          const val = Math.round(pMax - (pMax - pMin) * (i / 3));
+          ctx.fillText(val , pad.l - 4, y + 3);
         }
       }
     });

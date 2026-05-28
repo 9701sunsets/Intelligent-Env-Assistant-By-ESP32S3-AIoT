@@ -29,7 +29,7 @@
       </view>
     </view>
 
-    <!-- 三个环形进度 -->
+    <!-- 四个环形进度 -->
     <view class="rings-row">
       <view class="ring-item">
         <canvas type="2d" id="ring0" class="ring-canvas"></canvas>
@@ -51,6 +51,13 @@
           <text class="ring-value">{{sensor.light}}</text>
           <text class="ring-unit">lux</text>
           <text class="ring-name">光照</text>
+        </view>
+      </view>
+      <view class="ring-item">
+        <canvas type="2d" id="ring3" class="ring-canvas"></canvas>
+        <view class="ring-labels">
+          <text class="ring-value">{{sensor.ppm}}</text>
+          <text class="ring-name">PPM</text>
         </view>
       </view>
     </view>
@@ -96,6 +103,20 @@
         <view class="detail-status">
           <view class="status-dot" style="background: {{lDot}};"></view>
           <text style="color: {{lColor}};">{{lText}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="detail-divider"></view>
+    <view class="detail-row">
+      <view class="detail-icon light">⚠️</view>
+      <view class="detail-info">
+        <text class="detail-name">烟雾浓度</text>
+      </view>
+      <view class="detail-right">
+        <text class="detail-value">/</text>
+        <view class="detail-status">
+          <view class="status-dot" style="background: {{pDot}};"></view>
+          <text style="color: {{pColor}};">{{pText}}</text>
         </view>
       </view>
     </view>
